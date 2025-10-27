@@ -55,10 +55,9 @@ final class SupabaseClient: Sendable {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         
-        // Parse response - Supabase returns { "user": { "id": "...", "email": "..." }, ... }
+        // Parse response - Supabase returns user object directly at top level
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let userDict = json?["user"] as? [String: Any],
-              let userId = userDict["id"] as? String else {
+        guard let userId = json?["id"] as? String else {
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Failed to parse user ID from response: \(jsonString)")
             }
