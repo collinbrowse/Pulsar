@@ -134,11 +134,14 @@ struct SignInView: View {
             do {
                 let session = try await authService.signIn(email: email, password: password)
                 
-                // Navigate to profile creation or main app
+                // Fetch existing profile or navigate to profile creation
                 await MainActor.run {
+                    // For now, always go to profile creation
+                    // TODO: Check if profile exists and go to main app if it does
                     path.append(OnboardingDestination.profileCreation(
                         userID: session.userId,
-                        email: email
+                        email: email,
+                        username: "existing_user"
                     ))
                 }
             } catch {

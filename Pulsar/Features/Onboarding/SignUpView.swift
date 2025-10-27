@@ -190,11 +190,15 @@ struct SignUpView: View {
                     fullName: fullName.isEmpty ? nil : fullName
                 )
                 
+                // Sign in immediately after signup to get session
+                let session = try await authService.signIn(email: email, password: password)
+                
                 // Navigate to profile creation
                 await MainActor.run {
                     path.append(OnboardingDestination.profileCreation(
-                        userID: user.id,
-                        email: email
+                        userID: session.userId,
+                        email: email,
+                        username: username
                     ))
                 }
             } catch {

@@ -28,12 +28,12 @@ struct ProfileCreationView: View {
     
     private let authService = AuthenticationService.shared
     
-    init(userID: String, email: String, path: Binding<NavigationPath>) {
+    init(userID: String, email: String, username: String, path: Binding<NavigationPath>) {
         self.userID = userID
         self.email = email
         self._path = path
-        // Pre-fill username if available
-        _username = State(initialValue: "user_\(userID.prefix(8))")
+        // Use the username that was provided during signup
+        _username = State(initialValue: username)
         _fullName = State(initialValue: "")
     }
     
@@ -260,6 +260,7 @@ struct ProfileCreationView: View {
         ProfileCreationView(
             userID: "test-user-id",
             email: "test@example.com",
+            username: "testuser",
             path: .constant(NavigationPath())
         )
     }
