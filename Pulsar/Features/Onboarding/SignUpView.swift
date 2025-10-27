@@ -46,6 +46,8 @@ struct SignUpView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Username")
+                            .accessibilityIdentifier("Username")
                         
                         Text("3-30 characters, letters, numbers, - and _ only")
                             .font(.caption2)
@@ -63,6 +65,8 @@ struct SignUpView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Full Name")
+                            .accessibilityIdentifier("Full Name")
                     }
                     
                     // Email Field
@@ -79,6 +83,8 @@ struct SignUpView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Email")
+                            .accessibilityIdentifier("Email")
                     }
                     
                     // Password Field
@@ -92,6 +98,8 @@ struct SignUpView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Password")
+                            .accessibilityIdentifier("Password")
                         
                         Text("Minimum 8 characters")
                             .font(.caption2)
@@ -109,6 +117,8 @@ struct SignUpView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Confirm Password")
+                            .accessibilityIdentifier("Confirm Password")
                     }
                     
                     // Password Match Indicator
@@ -150,6 +160,7 @@ struct SignUpView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 32)
                 .disabled(isLoading || !isFormValid)
+                .accessibilityIdentifier("Create Account")
                 
                 // Terms
                 Text("By creating an account, you agree to our Terms of Service and Privacy Policy")

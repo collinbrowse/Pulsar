@@ -20,8 +20,8 @@ struct WelcomeView: View {
                 .foregroundStyle(.blue)
             
             // Title
-            Text("Pulsar")
-                .font(.system(size: 48, weight: .bold))
+            Text("Welcome to Pulsar")
+                .font(.system(size: 36, weight: .bold))
             
             // Tagline
             Text("Track, compete, and connect with athletes worldwide")
@@ -45,6 +45,7 @@ struct WelcomeView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .accessibilityIdentifier("Sign Up")
                 
                 Button(action: {
                     path.append(OnboardingDestination.signIn)
@@ -57,6 +58,7 @@ struct WelcomeView: View {
                         .foregroundStyle(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .accessibilityIdentifier("Sign In")
             }
             .padding(.horizontal, 32)
             .padding(.bottom, 40)

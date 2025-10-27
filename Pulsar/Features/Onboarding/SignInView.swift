@@ -44,6 +44,8 @@ struct SignInView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Email")
+                            .accessibilityIdentifier("Email")
                     }
                     
                     // Password Field
@@ -57,6 +59,8 @@ struct SignInView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Password")
+                            .accessibilityIdentifier("Password")
                     }
                     
                     // Error Message
@@ -86,6 +90,7 @@ struct SignInView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 32)
                 .disabled(isLoading || email.isEmpty || password.isEmpty)
+                .accessibilityIdentifier("Sign In")
                 
                 // Divider
                 HStack {

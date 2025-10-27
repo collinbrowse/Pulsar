@@ -102,6 +102,8 @@ struct ProfileCreationView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("Full Name")
+                            .accessibilityIdentifier("Full Name")
                     }
                     
                     // Gender
@@ -182,6 +184,7 @@ struct ProfileCreationView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 32)
                 .disabled(isLoading)
+                .accessibilityIdentifier("Complete Profile")
                 
                 Spacer()
             }
