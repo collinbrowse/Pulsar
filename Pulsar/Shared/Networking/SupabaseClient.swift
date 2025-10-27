@@ -68,7 +68,13 @@ final class SupabaseClient: Sendable {
     }
     
     func signIn(email: String, password: String) async throws -> Session {
-        let endpoint = baseURL.appendingPathComponent("/auth/v1/token")
+        // Build URL with grant_type as query parameter
+        var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true)!
+        components.queryItems = [URLQueryItem(name: "grant_type", value: "password")]
+        
+        guard let endpoint = components.url else {
+            throw NetworkError.invalidResponse
+        }
         
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -77,8 +83,7 @@ final class SupabaseClient: Sendable {
         
         let body: [String: Any] = [
             "email": email,
-            "password": password,
-            "grant_type": "password"
+            "password": password
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
