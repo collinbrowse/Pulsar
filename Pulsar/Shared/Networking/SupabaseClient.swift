@@ -48,12 +48,20 @@ final class SupabaseClient: Sendable {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
+            // Log the error for debugging
+            if let errorString = String(data: data, encoding: .utf8) {
+                print("Supabase signup error (\(httpResponse.statusCode)): \(errorString)")
+            }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         
-        // Parse response
+        // Parse response - Supabase returns { "user": { "id": "...", "email": "..." }, ... }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let userId = json?["id"] as? String else {
+        guard let userDict = json?["user"] as? [String: Any],
+              let userId = userDict["id"] as? String else {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Failed to parse user ID from response: \(jsonString)")
+            }
             throw NetworkError.invalidData
         }
         
@@ -77,14 +85,25 @@ final class SupabaseClient: Sendable {
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.unauthorized
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            // Log the error for debugging
+            if let errorString = String(data: data, encoding: .utf8) {
+                print("Supabase signin error (\(httpResponse.statusCode)): \(errorString)")
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let accessToken = json?["access_token"] as? String,
-              let userId = (json?["user"] as? [String: Any])?["id"] as? String else {
+              let userDict = json?["user"] as? [String: Any],
+              let userId = userDict["id"] as? String else {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Failed to parse session from response: \(jsonString)")
+            }
             throw NetworkError.invalidData
         }
         
@@ -113,22 +132,70 @@ final class SupabaseClient: Sendable {
         
         var request = URLRequest(url: components.url!)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("app", forHTTPHeaderField: "Accept-Profile") // Use app schema
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         
         if let token = accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         }
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorString = String(data: data, encoding: .utf8) {
+                print("Supabase fetch error (\(httpResponse.statusCode)): \(errorString)")
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return try decoder.decode([T].self, from: data)
+    }
+    
+    func update<T: Encodable>(
+        table: String,
+        data: T,
+        filter: [String: Any],
+        accessToken: String
+    ) async throws {
+        var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
+        
+        var queryItems: [URLQueryItem] = []
+        for (key, value) in filter {
+            queryItems.append(URLQueryItem(name: key, value: "eq.\(value)"))
+        }
+        components.queryItems = queryItems
+        
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("app", forHTTPHeaderField: "Content-Profile") // Use app schema for writes
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(data)
+        
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorString = String(data: responseData, encoding: .utf8) {
+                print("Supabase update error (\(httpResponse.statusCode)): \(errorString)")
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
     }
     
     // MARK: - Edge Functions

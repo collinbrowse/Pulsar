@@ -138,20 +138,11 @@ final class AuthenticationService: Sendable {
             throw AuthError.notAuthenticated
         }
         
-        // In production, would use Supabase REST API to update
-        // For now, we'll use the Edge Function approach
-        let body: [String: Any] = [
-            "user_id": profile.userId,
-            "username": profile.username,
-            "full_name": profile.fullName ?? "",
-            "gender": profile.gender ?? "",
-            "weight_kg": profile.weightKg ?? 0,
-            "birth_year": profile.birthYear ?? 0
-        ]
-        
-        _ = try await supabaseClient.callFunction(
-            name: "update-profile",
-            body: body,
+        // Update profile using REST API
+        try await supabaseClient.update(
+            table: "profiles",
+            data: profile,
+            filter: ["user_id": profile.userId],
             accessToken: token
         )
         
