@@ -7,9 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import OSLog
+
+private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "App")
 
 @main
 struct PulsarApp: App {
+    @State private var appState = AppState()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -22,11 +27,36 @@ struct PulsarApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+    
+    init() {
+        configureApp()
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(appState)
         }
         .modelContainer(sharedModelContainer)
+    }
+    
+    // MARK: - Configuration
+    
+    private func configureApp() {
+        logger.info("Pulsar app launching...")
+        
+        // Configure observability (analytics, crashlytics)
+        Task { @MainActor in
+            ObservabilityManager.shared.configure()
+        }
+        
+        // Log configuration status
+        if AppEnvironment.shared.isConfigured {
+            logger.info("Environment configured successfully")
+        } else {
+            logger.warning("Environment not fully configured - check API keys")
+        }
+        
+        logger.info("Pulsar app configured")
     }
 }
