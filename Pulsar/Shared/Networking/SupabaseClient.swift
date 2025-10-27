@@ -6,6 +6,9 @@
 //
 
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "SupabaseClient")
 
 /// Supabase API client for backend communication
 @MainActor
@@ -29,6 +32,9 @@ final class SupabaseClient: Sendable {
     func signUp(email: String, password: String, metadata: [String: Any] = [:]) async throws -> User {
         let endpoint = baseURL.appendingPathComponent("/auth/v1/signup")
         
+        logger.info("📤 Signup Request: POST \(endpoint.absoluteString)")
+        logger.debug("📤 Signup Body: email=\(email), metadata=\(metadata)")
+        
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -44,12 +50,14 @@ final class SupabaseClient: Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ Signup: Invalid HTTP response")
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
             // Log the error for debugging
             if let errorString = String(data: data, encoding: .utf8) {
+                logger.error("❌ Signup Error (\(httpResponse.statusCode)): \(errorString)")
                 print("Supabase signup error (\(httpResponse.statusCode)): \(errorString)")
             }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -59,11 +67,13 @@ final class SupabaseClient: Sendable {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let userId = json?["id"] as? String else {
             if let jsonString = String(data: data, encoding: .utf8) {
+                logger.error("❌ Failed to parse user ID from response: \(jsonString)")
                 print("Failed to parse user ID from response: \(jsonString)")
             }
             throw NetworkError.invalidData
         }
         
+        logger.info("✅ Signup Success: userID=\(userId)")
         return User(id: userId, email: email)
     }
     
@@ -73,8 +83,12 @@ final class SupabaseClient: Sendable {
         components.queryItems = [URLQueryItem(name: "grant_type", value: "password")]
         
         guard let endpoint = components.url else {
+            logger.error("❌ SignIn: Failed to build URL")
             throw NetworkError.invalidResponse
         }
+        
+        logger.info("📤 SignIn Request: POST \(endpoint.absoluteString)")
+        logger.debug("📤 SignIn Body: email=\(email)")
         
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -90,13 +104,25 @@ final class SupabaseClient: Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ SignIn: Invalid HTTP response")
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
             // Log the error for debugging
             if let errorString = String(data: data, encoding: .utf8) {
+                logger.error("❌ SignIn Error (\(httpResponse.statusCode)): \(errorString)")
                 print("Supabase signin error (\(httpResponse.statusCode)): \(errorString)")
+                
+                // Parse error details if available
+                if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let errorCode = errorJson["error_code"] as? String {
+                        logger.error("   Error Code: \(errorCode)")
+                    }
+                    if let msg = errorJson["msg"] as? String {
+                        logger.error("   Message: \(msg)")
+                    }
+                }
             }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
@@ -106,11 +132,13 @@ final class SupabaseClient: Sendable {
               let userDict = json?["user"] as? [String: Any],
               let userId = userDict["id"] as? String else {
             if let jsonString = String(data: data, encoding: .utf8) {
+                logger.error("❌ Failed to parse session from response: \(jsonString)")
                 print("Failed to parse session from response: \(jsonString)")
             }
             throw NetworkError.invalidData
         }
         
+        logger.info("✅ SignIn Success: userID=\(userId)")
         return Session(accessToken: accessToken, userId: userId)
     }
     
@@ -134,6 +162,9 @@ final class SupabaseClient: Sendable {
         
         components.queryItems = queryItems
         
+        logger.info("📤 Fetch Request: GET \(components.url!.absoluteString)")
+        logger.debug("   Table: \(table), Filters: \(filter)")
+        
         var request = URLRequest(url: components.url!)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("app", forHTTPHeaderField: "Accept-Profile") // Use app schema
@@ -141,22 +172,28 @@ final class SupabaseClient: Sendable {
         
         if let token = accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            logger.debug("   Using access token: \(token.prefix(20))...")
         } else {
             request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+            logger.debug("   Using anon key")
         }
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ Fetch: Invalid HTTP response")
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorString = String(data: data, encoding: .utf8) {
+                logger.error("❌ Fetch Error (\(httpResponse.statusCode)): \(errorString)")
                 print("Supabase fetch error (\(httpResponse.statusCode)): \(errorString)")
             }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
+        
+        logger.info("✅ Fetch Success: \(data.count) bytes received")
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -177,6 +214,9 @@ final class SupabaseClient: Sendable {
         }
         components.queryItems = queryItems
         
+        logger.info("📤 Update Request: PATCH \(components.url!.absoluteString)")
+        logger.debug("   Table: \(table), Filters: \(filter)")
+        
         var request = URLRequest(url: components.url!)
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -188,18 +228,26 @@ final class SupabaseClient: Sendable {
         encoder.keyEncodingStrategy = .convertToSnakeCase
         request.httpBody = try encoder.encode(data)
         
+        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+            logger.debug("   Body: \(bodyString)")
+        }
+        
         let (responseData, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ Update: Invalid HTTP response")
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorString = String(data: responseData, encoding: .utf8) {
+                logger.error("❌ Update Error (\(httpResponse.statusCode)): \(errorString)")
                 print("Supabase update error (\(httpResponse.statusCode)): \(errorString)")
             }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
+        
+        logger.info("✅ Update Success")
     }
     
     // MARK: - Edge Functions
