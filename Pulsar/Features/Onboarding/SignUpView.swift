@@ -1,0 +1,215 @@
+//
+//  SignUpView.swift
+//  Pulsar
+//
+//  Created on 10/27/25.
+//
+
+import SwiftUI
+
+struct SignUpView: View {
+    @Binding var path: NavigationPath
+    @State private var email = ""
+    @State private var password = ""
+    @State private var confirmPassword = ""
+    @State private var username = ""
+    @State private var fullName = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    
+    private let authService = AuthenticationService.shared
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Text("Create Account")
+                        .font(.system(size: 32, weight: .bold))
+                    Text("Join the Pulsar community")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 20)
+                
+                // Form
+                VStack(spacing: 16) {
+                    // Username Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Username")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        TextField("athlete123", text: $username)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        
+                        Text("3-30 characters, letters, numbers, - and _ only")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    // Full Name Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Full Name")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        TextField("John Doe", text: $fullName)
+                            .textContentType(.name)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    
+                    // Email Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Email")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        TextField("you@example.com", text: $email)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    
+                    // Password Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Password")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        SecureField("••••••••", text: $password)
+                            .textContentType(.newPassword)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        
+                        Text("Minimum 8 characters")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    // Confirm Password Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Confirm Password")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        SecureField("••••••••", text: $confirmPassword)
+                            .textContentType(.newPassword)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    
+                    // Password Match Indicator
+                    if !password.isEmpty && !confirmPassword.isEmpty {
+                        HStack {
+                            Image(systemName: password == confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundStyle(password == confirmPassword ? .green : .red)
+                            Text(password == confirmPassword ? "Passwords match" : "Passwords don't match")
+                                .font(.caption)
+                                .foregroundStyle(password == confirmPassword ? .green : .red)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    
+                    // Error Message
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.horizontal, 32)
+                
+                // Sign Up Button
+                Button(action: signUp) {
+                    if isLoading {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Create Account")
+                            .font(.headline)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(isFormValid ? .blue : Color(.systemGray4))
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 32)
+                .disabled(isLoading || !isFormValid)
+                
+                // Terms
+                Text("By creating an account, you agree to our Terms of Service and Privacy Policy")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                
+                Spacer()
+            }
+        }
+        .navigationTitle("Sign Up")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    // MARK: - Validation
+    
+    private var isFormValid: Bool {
+        !username.isEmpty &&
+        !email.isEmpty &&
+        !password.isEmpty &&
+        password.count >= 8 &&
+        password == confirmPassword
+    }
+    
+    // MARK: - Actions
+    
+    private func signUp() {
+        errorMessage = nil
+        isLoading = true
+        
+        Task {
+            do {
+                let user = try await authService.signUp(
+                    email: email,
+                    password: password,
+                    username: username,
+                    fullName: fullName.isEmpty ? nil : fullName
+                )
+                
+                // Navigate to profile creation
+                await MainActor.run {
+                    path.append(OnboardingDestination.profileCreation(
+                        userID: user.id,
+                        email: email
+                    ))
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        SignUpView(path: .constant(NavigationPath()))
+    }
+}
+

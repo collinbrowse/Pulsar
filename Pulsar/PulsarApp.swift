@@ -18,6 +18,7 @@ struct PulsarApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            Profile.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -34,8 +35,13 @@ struct PulsarApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(appState)
+            if appState.isAuthenticated {
+                ContentView()
+                    .environment(appState)
+            } else {
+                OnboardingCoordinator()
+                    .environment(appState)
+            }
         }
         .modelContainer(sharedModelContainer)
     }
