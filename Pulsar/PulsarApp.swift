@@ -19,6 +19,8 @@ struct PulsarApp: App {
         let schema = Schema([
             Item.self,
             Profile.self,
+            Activity.self,
+            TrackPoint.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
