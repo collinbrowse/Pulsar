@@ -5,6 +5,7 @@
 //  Created on 10/27/25.
 //
 
+import Foundation
 import Testing
 import SwiftData
 @testable import Pulsar

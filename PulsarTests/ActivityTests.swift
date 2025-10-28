@@ -5,6 +5,7 @@
 //  Created on 10/27/25.
 //
 
+import Foundation
 import Testing
 import SwiftData
 @testable import Pulsar
@@ -128,8 +129,12 @@ struct ActivityServiceTests {
     
     @Test("ActivityService should reject unsupported file formats")
     func testUnsupportedFileFormat() async throws {
-        let service = ActivityService.shared
-        let tempURL = URL(fileURLWithPath: "/tmp/test.xyz")
+        let service = await ActivityService.shared
+        
+        // Create a temporary file with unsupported extension
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test.xyz")
+        try "dummy content".write(to: tempURL, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
         
         await #expect(throws: ActivityServiceError.self) {
             try await service.parseActivityFile(from: tempURL, userID: "test-user")

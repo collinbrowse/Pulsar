@@ -167,7 +167,7 @@ final class SupabaseClient: Sendable {
         
         var request = URLRequest(url: components.url!)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("app", forHTTPHeaderField: "Accept-Profile") // Use app schema
+        request.setValue("public", forHTTPHeaderField: "Accept-Profile") // Use public schema
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         
         if let token = accessToken {
@@ -220,7 +220,7 @@ final class SupabaseClient: Sendable {
         var request = URLRequest(url: components.url!)
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("app", forHTTPHeaderField: "Content-Profile") // Use app schema for writes
+        request.setValue("public", forHTTPHeaderField: "Content-Profile") // Use public schema for writes
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         
