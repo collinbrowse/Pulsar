@@ -202,6 +202,7 @@ final class SupabaseClient: Sendable {
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601 // PostgreSQL returns ISO 8601 timestamps
         let result = try decoder.decode([T].self, from: data)
         logger.debug("   Decoded \(result.count) items")
         return result
@@ -226,6 +227,7 @@ final class SupabaseClient: Sendable {
         
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601 // PostgreSQL expects ISO 8601 timestamps
         request.httpBody = try encoder.encode(data)
         
         if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
@@ -281,6 +283,7 @@ final class SupabaseClient: Sendable {
         
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601 // PostgreSQL expects ISO 8601 timestamps
         request.httpBody = try encoder.encode(data)
         
         if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
