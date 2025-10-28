@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SignUpView: View {
     @Binding var path: NavigationPath
+    @Environment(AppState.self) private var appState
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -213,10 +214,58 @@ struct SignUpView: View {
                     ))
                 }
             } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
+                // Check if error is "user already exists"
+                let errorDescription = error.localizedDescription.lowercased()
+                if errorDescription.contains("user_already_exists") || 
+                   errorDescription.contains("user already registered") ||
+                   errorDescription.contains("already exists") {
+                    // Gracefully handle by signing in instead
+                    await handleExistingUser()
+                } else {
+                    // Show other errors normally
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        isLoading = false
+                    }
                 }
+            }
+        }
+    }
+    
+    /// Gracefully handle sign-up attempt with existing account by signing in
+    private func handleExistingUser() async {
+        print("ℹ️ User already exists - attempting sign-in instead")
+        
+        do {
+            // Attempt to sign in with provided credentials
+            let session = try await authService.signIn(email: email, password: password)
+            
+            // Check if profile exists
+            let profiles: [ProfileDTO] = try await authService.fetchProfiles(userID: session.userId)
+            
+            await MainActor.run {
+                if let existingProfile = profiles.first {
+                    // User has complete profile - go to main app
+                    print("✅ Existing user signed in successfully - navigating to main app")
+                    appState.isAuthenticated = true
+                    appState.currentUserID = session.userId
+                    path = NavigationPath() // Clear navigation stack
+                } else {
+                    // User exists but no profile - navigate to profile creation
+                    print("ℹ️ Existing user needs to complete profile")
+                    path.append(OnboardingDestination.profileCreation(
+                        userID: session.userId,
+                        email: email,
+                        username: username
+                    ))
+                }
+                isLoading = false
+            }
+        } catch {
+            // Sign-in failed (wrong password, etc.) - show error
+            await MainActor.run {
+                errorMessage = "Account exists. Please check your password and try again, or use Sign In."
+                isLoading = false
             }
         }
     }

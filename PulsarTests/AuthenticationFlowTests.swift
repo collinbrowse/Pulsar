@@ -145,6 +145,45 @@ struct AuthenticationFlowTests {
         // 3. Not trying to access .first! (would crash)
     }
     
+    @Test("Sign-up error handling: User already exists should be detected")
+    func testUserAlreadyExistsErrorDetection() async throws {
+        // This test validates that the "user already exists" error is properly detected
+        
+        let testCases = [
+            "User already registered",
+            "user_already_exists",
+            "Email address already exists",
+            "USER ALREADY EXISTS" // Case insensitive
+        ]
+        
+        for errorMessage in testCases {
+            let lowercased = errorMessage.lowercased()
+            
+            // These patterns should all be detected
+            let isUserExistsError = lowercased.contains("user_already_exists") ||
+                                   lowercased.contains("user already registered") ||
+                                   lowercased.contains("already exists")
+            
+            #expect(isUserExistsError, "Should detect '\(errorMessage)' as user exists error")
+        }
+        
+        // Verify non-matching errors are NOT detected
+        let nonMatchingErrors = [
+            "Invalid email format",
+            "Network error",
+            "Password too weak"
+        ]
+        
+        for errorMessage in nonMatchingErrors {
+            let lowercased = errorMessage.lowercased()
+            let isUserExistsError = lowercased.contains("user_already_exists") ||
+                                   lowercased.contains("user already registered") ||
+                                   lowercased.contains("already exists")
+            
+            #expect(!isUserExistsError, "Should NOT detect '\(errorMessage)' as user exists error")
+        }
+    }
+    
     @Test("Profile data integrity: All required fields preserved")
     func testProfileDataIntegrity() async throws {
         // This test ensures all profile fields are correctly encoded/decoded

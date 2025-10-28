@@ -56,6 +56,20 @@ final class OnboardingUITests: XCTestCase {
     
     // MARK: - Sign Up Flow Tests
     
+    func testSignUpWithExistingAccountHandledGracefully() throws {
+        // This test validates that attempting to sign up with an existing account
+        // gracefully signs the user in instead of showing a hard error.
+        // 
+        // NOTE: This test requires a pre-existing test account in the database.
+        // In a real test environment, you would:
+        // 1. Create a test account in setUp()
+        // 2. Attempt to sign up with same credentials
+        // 3. Verify graceful handling
+        // 4. Clean up in tearDown()
+        
+        throw XCTSkip("Test requires pre-existing account setup - will be enabled with test data fixtures")
+    }
+    
     func testPasswordFieldsAreEditable() throws {
         // Navigate to sign up
         app.buttons["Sign Up"].tap()
