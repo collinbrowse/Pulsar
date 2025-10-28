@@ -9,58 +9,61 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @Environment(AppState.self) private var appState
+    
     var body: some View {
-        NavigationSplitView {
+        TabView {
+            ActivitiesView()
+                .tabItem {
+                    Label("Activities", systemImage: "figure.run")
+                }
+            
+            Text("Feed")
+                .tabItem {
+                    Label("Feed", systemImage: "house.fill")
+                }
+            
+            Text("Segments")
+                .tabItem {
+                    Label("Segments", systemImage: "flag.fill")
+                }
+            
+            ProfileTabView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+        }
+    }
+}
+
+// Placeholder for Profile Tab
+struct ProfileTabView: View {
+    @Environment(AppState.self) private var appState
+    
+    var body: some View {
+        NavigationStack {
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+                Section("Account") {
+                    if let profile = appState.userProfile {
+                        Text("@\(profile.username)")
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                
+                Section {
+                    Button("Sign Out", role: .destructive) {
+                        // Sign out logic
+                        AuthenticationService.shared.signOut()
+                        appState.isAuthenticated = false
                     }
                 }
             }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+            .navigationTitle("Profile")
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: Activity.self, inMemory: true)
+        .environment(AppState())
 }
