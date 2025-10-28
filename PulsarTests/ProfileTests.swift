@@ -111,5 +111,153 @@ struct ProfileTests {
         #expect(allCases.contains(.other))
         #expect(allCases.contains(.preferNotToSay))
     }
+    
+    @Test("ProfileDTO should decode dates in PostgreSQL format (with timezone offset)")
+    func testProfileDTODecodingWithPostgreSQLDates() throws {
+        // Simulate the actual JSON response from Supabase/PostgreSQL
+        let json = """
+        {
+            "user_id": "14bb222f-e47c-47c9-ae90-a8fb3070d3cb",
+            "username": "user_14bb222f",
+            "full_name": "Collin Browse",
+            "avatar_url": null,
+            "gender": "male",
+            "weight_kg": 80.00,
+            "birth_year": 1994,
+            "created_at": "2025-10-28T14:44:35+00:00",
+            "updated_at": "2025-10-28T14:44:35+00:00"
+        }
+        """
+        
+        let jsonData = json.data(using: .utf8)!
+        
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            // PostgreSQL returns dates in these formats:
+            // "2025-10-28T14:44:35+00:00"
+            // "2025-10-28T14:44:35Z"
+            // "2025-10-28T14:44:35.123+00:00"
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            
+            // Try format with timezone offset (PostgreSQL default): yyyy-MM-dd'T'HH:mm:ssZZZZZ
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with fractional seconds: yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with Z (Zulu time)
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try with fractional seconds and Z
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Cannot decode date string: \(dateString)"
+            )
+        }
+        
+        let profile = try decoder.decode(ProfileDTO.self, from: jsonData)
+        
+        #expect(profile.userId == "14bb222f-e47c-47c9-ae90-a8fb3070d3cb")
+        #expect(profile.username == "user_14bb222f")
+        #expect(profile.fullName == "Collin Browse")
+        #expect(profile.avatarUrl == nil)
+        #expect(profile.gender == "male")
+        #expect(profile.weightKg == 80.00)
+        #expect(profile.birthYear == 1994)
+        #expect(profile.createdAt != nil)
+        #expect(profile.updatedAt != nil)
+    }
+    
+    @Test("ProfileDTO should decode dates in standard ISO 8601 format (with Z)")
+    func testProfileDTODecodingWithStandardISO8601() throws {
+        let json = """
+        {
+            "user_id": "test-id",
+            "username": "testuser",
+            "full_name": "Test User",
+            "avatar_url": null,
+            "gender": null,
+            "weight_kg": null,
+            "birth_year": null,
+            "created_at": "2025-10-28T14:44:35Z",
+            "updated_at": "2025-10-28T14:44:35Z"
+        }
+        """
+        
+        let jsonData = json.data(using: .utf8)!
+        
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            // PostgreSQL returns dates in these formats:
+            // "2025-10-28T14:44:35+00:00"
+            // "2025-10-28T14:44:35Z"
+            // "2025-10-28T14:44:35.123+00:00"
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            
+            // Try format with timezone offset (PostgreSQL default): yyyy-MM-dd'T'HH:mm:ssZZZZZ
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with fractional seconds: yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with Z (Zulu time)
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try with fractional seconds and Z
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Cannot decode date string: \(dateString)"
+            )
+        }
+        
+        let profile = try decoder.decode(ProfileDTO.self, from: jsonData)
+        
+        #expect(profile.userId == "test-id")
+        #expect(profile.username == "testuser")
+        #expect(profile.createdAt != nil)
+        #expect(profile.updatedAt != nil)
+    }
 }
 

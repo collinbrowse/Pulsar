@@ -226,7 +226,48 @@ final class SupabaseClient: Sendable {
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .iso8601 // PostgreSQL returns ISO 8601 timestamps
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            // PostgreSQL returns dates in these formats:
+            // "2025-10-28T14:44:35+00:00"
+            // "2025-10-28T14:44:35Z"
+            // "2025-10-28T14:44:35.123+00:00"
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            
+            // Try format with timezone offset (PostgreSQL default): yyyy-MM-dd'T'HH:mm:ssZZZZZ
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with fractional seconds: yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with Z (Zulu time)
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try with fractional seconds and Z
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Cannot decode date string: \(dateString)"
+            )
+        }
         let result = try decoder.decode([T].self, from: data)
         logger.debug("   Decoded \(result.count) items")
         return result

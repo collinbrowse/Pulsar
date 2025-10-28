@@ -7,12 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BEF804E62EB0F7E20018966D /* GETTING_STARTED.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804E52EB0F7E20018966D /* GETTING_STARTED.md */; };
-		BEF804E72EB0F7E20018966D /* ENV_SETUP.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804E42EB0F7E20018966D /* ENV_SETUP.md */; };
-		BEF804ED2EB0F7F20018966D /* MILESTONE_0_CHECKLIST.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804E82EB0F7F20018966D /* MILESTONE_0_CHECKLIST.md */; };
-		BEF804EE2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804EB2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md */; };
-		BEF804EF2EB0F7F20018966D /* MILESTONE_0_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804E92EB0F7F20018966D /* MILESTONE_0_SUMMARY.md */; };
-		BEF804F02EB0F7F20018966D /* MILESTONE_1_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804EA2EB0F7F20018966D /* MILESTONE_1_SUMMARY.md */; };
 		BEF8052D2EB124930018966D /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BEF8052C2EB124930018966D /* PostHog */; };
 /* End PBXBuildFile section */
 
@@ -37,12 +31,6 @@
 		BEF804432EAFF1D30018966D /* Pulsar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulsar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEF804522EAFF1D40018966D /* PulsarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulsarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEF8045C2EAFF1D40018966D /* PulsarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulsarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		BEF804E42EB0F7E20018966D /* ENV_SETUP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ENV_SETUP.md; sourceTree = "<group>"; };
-		BEF804E52EB0F7E20018966D /* GETTING_STARTED.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GETTING_STARTED.md; sourceTree = "<group>"; };
-		BEF804E82EB0F7F20018966D /* MILESTONE_0_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MILESTONE_0_CHECKLIST.md; sourceTree = "<group>"; };
-		BEF804E92EB0F7F20018966D /* MILESTONE_0_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MILESTONE_0_SUMMARY.md; sourceTree = "<group>"; };
-		BEF804EA2EB0F7F20018966D /* MILESTONE_1_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MILESTONE_1_SUMMARY.md; sourceTree = "<group>"; };
-		BEF804EB2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MILESTONE_2_SUMMARY.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -96,9 +84,6 @@
 				BEF804552EAFF1D40018966D /* PulsarTests */,
 				BEF8045F2EAFF1D40018966D /* PulsarUITests */,
 				BEF804442EAFF1D30018966D /* Products */,
-				BEF804E42EB0F7E20018966D /* ENV_SETUP.md */,
-				BEF804E52EB0F7E20018966D /* GETTING_STARTED.md */,
-				BEF804EC2EB0F7F20018966D /* Milestones */,
 			);
 			sourceTree = "<group>";
 		};
@@ -110,17 +95,6 @@
 				BEF8045C2EAFF1D40018966D /* PulsarUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		BEF804EC2EB0F7F20018966D /* Milestones */ = {
-			isa = PBXGroup;
-			children = (
-				BEF804E82EB0F7F20018966D /* MILESTONE_0_CHECKLIST.md */,
-				BEF804E92EB0F7F20018966D /* MILESTONE_0_SUMMARY.md */,
-				BEF804EA2EB0F7F20018966D /* MILESTONE_1_SUMMARY.md */,
-				BEF804EB2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md */,
-			);
-			path = Milestones;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -247,12 +221,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BEF804ED2EB0F7F20018966D /* MILESTONE_0_CHECKLIST.md in Resources */,
-				BEF804EE2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md in Resources */,
-				BEF804EF2EB0F7F20018966D /* MILESTONE_0_SUMMARY.md in Resources */,
-				BEF804F02EB0F7F20018966D /* MILESTONE_1_SUMMARY.md in Resources */,
-				BEF804E62EB0F7E20018966D /* GETTING_STARTED.md in Resources */,
-				BEF804E72EB0F7E20018966D /* ENV_SETUP.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
