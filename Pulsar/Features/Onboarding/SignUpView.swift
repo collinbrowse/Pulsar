@@ -94,7 +94,7 @@ struct SignUpView: View {
                             .foregroundStyle(.secondary)
                         
                         SecureField("••••••••", text: $password)
-                            .textContentType(.newPassword)
+                            .textContentType(nil) // Disable automatic password suggestion
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -113,7 +113,7 @@ struct SignUpView: View {
                             .foregroundStyle(.secondary)
                         
                         SecureField("••••••••", text: $confirmPassword)
-                            .textContentType(.newPassword)
+                            .textContentType(nil) // Disable automatic password suggestion
                             .padding()
                             .background(Color(.systemGray6))
                             .clipShape(RoundedRectangle(cornerRadius: 12))

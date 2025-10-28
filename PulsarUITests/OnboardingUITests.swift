@@ -56,6 +56,32 @@ final class OnboardingUITests: XCTestCase {
     
     // MARK: - Sign Up Flow Tests
     
+    func testPasswordFieldsAreEditable() throws {
+        // Navigate to sign up
+        app.buttons["Sign Up"].tap()
+        
+        // Wait for password field to appear
+        let passwordField = app.secureTextFields["Password"]
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 2), "Password field should exist")
+        
+        // Tap password field
+        passwordField.tap()
+        
+        // Type a password - this should NOT be blocked by automatic password overlay
+        passwordField.typeText("testpass123")
+        
+        // Verify password was entered (field is no longer empty)
+        // Note: Can't read SecureField value, but can verify form validation works
+        let confirmPasswordField = app.secureTextFields["Confirm Password"]
+        confirmPasswordField.tap()
+        confirmPasswordField.typeText("testpass123")
+        
+        // If passwords can be entered, the "Passwords match" indicator should appear
+        let passwordMatchIndicator = app.staticTexts["Passwords match"]
+        XCTAssertTrue(passwordMatchIndicator.waitForExistence(timeout: 2), 
+                     "Password fields should accept manual input and show match indicator")
+    }
+    
     func testSignUpValidationErrors() throws {
         // Navigate to sign up
         app.buttons["Sign Up"].tap()

@@ -120,6 +120,76 @@ func upsert<T: Encodable>(
 
 ---
 
+### Issue #4: Automatic Password Suggestion Blocking Manual Entry ✅ **FIXED**
+**Status:** Fixed  
+**Severity:** Critical (blocking feature)
+
+**Description:**  
+iOS automatic strong password suggestion was covering the password fields with "Automatic Strong Password cover view text", preventing users from typing their own passwords during sign-up.
+
+**Screenshot Evidence:**  
+User provided screenshot showing yellow-highlighted text "Automatic Strong Password cover view text" in both password fields, making manual entry impossible.
+
+**Root Cause:**  
+```swift
+SecureField("••••••••", text: $password)
+    .textContentType(.newPassword)  // ← Triggers automatic password suggestion
+```
+
+The `.textContentType(.newPassword)` modifier tells iOS to offer automatic strong password generation. While this is a useful feature, it was blocking users who wanted to create their own passwords.
+
+**The Fix:**  
+✅ **Disabled automatic password suggestion**
+```swift
+// Before:
+SecureField("••••••••", text: $password)
+    .textContentType(.newPassword)  // Blocks manual entry
+
+// After:
+SecureField("••••••••", text: $password)
+    .textContentType(nil)  // Allows manual entry
+```
+
+**Impact:**
+- Users can now type their own passwords
+- Password manager integration disabled (acceptable trade-off)
+- Manual password entry works correctly
+- "Passwords match" indicator functions properly
+
+**Testing:**
+- [x] Build passes
+- [x] UI test: `testPasswordFieldsAreEditable()` ✅ PASSED
+- [x] Manual testing: User can type passwords
+- [x] Validation: "Passwords match" indicator appears
+
+**Test Added:**
+```swift
+func testPasswordFieldsAreEditable() throws {
+    app.buttons["Sign Up"].tap()
+    
+    let passwordField = app.secureTextFields["Password"]
+    passwordField.tap()
+    passwordField.typeText("testpass123")  // Should NOT be blocked
+    
+    let confirmPasswordField = app.secureTextFields["Confirm Password"]
+    confirmPasswordField.tap()
+    confirmPasswordField.typeText("testpass123")
+    
+    // Verify "Passwords match" indicator appears
+    let passwordMatchIndicator = app.staticTexts["Passwords match"]
+    XCTAssertTrue(passwordMatchIndicator.waitForExistence(timeout: 2))
+}
+```
+
+**Alternative Solutions Considered:**
+1. ✅ **Remove `.textContentType(.newPassword)`** - Chosen for simplicity
+2. ❌ Keep `.newPassword` but add "Use My Own Password" button - Too complex
+3. ❌ Detect and dismiss suggestion overlay - Fragile and unreliable
+
+**Decision:** Prioritize manual password entry over automatic generation. Users who want strong passwords can use third-party password managers.
+
+---
+
 ## 📊 Impact Summary
 
 | Issue | Status | Impact | User Experience |
@@ -127,6 +197,7 @@ func upsert<T: Encodable>(
 | #1: Sign-in UX | Deferred | Medium | Confusing for users |
 | #2: Haptic Warning | Documented | Low | Console clutter only |
 | #3: Profile Not Found | ✅ Fixed | Critical | Blocking authentication |
+| #4: Password Field Blocked | ✅ Fixed | Critical | Cannot create account |
 
 ---
 
@@ -167,6 +238,11 @@ func testSignInWithNonExistentAccount()
 func testCompleteSignUpAndProfileFlow()
 func testSignOutAndSignInAgain()
 func testProfileDataPersistsAcrossSignIns()
+```
+
+**OnboardingUITests.swift (ADDED):**
+```swift
+✅ func testPasswordFieldsAreEditable()  // Issue #4 regression test
 ```
 
 ---
