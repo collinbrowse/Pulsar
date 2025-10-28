@@ -214,17 +214,17 @@ struct SignUpView: View {
                     ))
                 }
             } catch {
-                // Check if error is "user already exists"
-                let errorDescription = error.localizedDescription.lowercased()
-                if errorDescription.contains("user_already_exists") || 
-                   errorDescription.contains("user already registered") ||
-                   errorDescription.contains("already exists") {
+                // Use ErrorManager to parse and handle error
+                ErrorManager.shared.logError(error, context: "Sign Up")
+                
+                // Check if error should trigger automatic recovery (e.g., auto sign-in)
+                if error.shouldAutoRecover {
                     // Gracefully handle by signing in instead
                     await handleExistingUser()
                 } else {
-                    // Show other errors normally
+                    // Show user-friendly error message
                     await MainActor.run {
-                        errorMessage = error.localizedDescription
+                        errorMessage = error.userMessage
                         isLoading = false
                     }
                 }
@@ -262,9 +262,10 @@ struct SignUpView: View {
                 isLoading = false
             }
         } catch {
-            // Sign-in failed (wrong password, etc.) - show error
+            // Sign-in failed (wrong password, etc.) - show user-friendly error
+            ErrorManager.shared.logError(error, context: "Auto Sign-In")
             await MainActor.run {
-                errorMessage = "Account exists. Please check your password and try again, or use Sign In."
+                errorMessage = "Account exists, but the password is incorrect. Please use Sign In to access your account."
                 isLoading = false
             }
         }

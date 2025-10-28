@@ -55,12 +55,29 @@ final class SupabaseClient: Sendable {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            // Log the error for debugging
+            // Parse detailed error information
+            var errorCode: String?
+            var errorMessage: String?
+            
             if let errorString = String(data: data, encoding: .utf8) {
                 logger.error("❌ Signup Error (\(httpResponse.statusCode)): \(errorString)")
-                print("Supabase signup error (\(httpResponse.statusCode)): \(errorString)")
+                print("❌ Signup Error (\(httpResponse.statusCode)): \(errorString)")
+                
+                // Parse error JSON
+                if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    errorCode = errorJson["error_code"] as? String
+                    errorMessage = errorJson["msg"] as? String
+                    
+                    if let code = errorCode {
+                        logger.error("   Error Code: \(code)")
+                    }
+                    if let msg = errorMessage {
+                        logger.error("   Message: \(msg)")
+                    }
+                }
             }
-            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+            
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode, errorCode: errorCode, message: errorMessage)
         }
         
         // Parse response - Supabase returns user object directly at top level
@@ -109,22 +126,29 @@ final class SupabaseClient: Sendable {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            // Log the error for debugging
+            // Parse detailed error information
+            var errorCode: String?
+            var errorMessage: String?
+            
             if let errorString = String(data: data, encoding: .utf8) {
                 logger.error("❌ SignIn Error (\(httpResponse.statusCode)): \(errorString)")
-                print("Supabase signin error (\(httpResponse.statusCode)): \(errorString)")
+                print("❌ SignIn Error (\(httpResponse.statusCode)): \(errorString)")
                 
-                // Parse error details if available
+                // Parse error JSON
                 if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    if let errorCode = errorJson["error_code"] as? String {
-                        logger.error("   Error Code: \(errorCode)")
+                    errorCode = errorJson["error_code"] as? String
+                    errorMessage = errorJson["msg"] as? String
+                    
+                    if let code = errorCode {
+                        logger.error("   Error Code: \(code)")
                     }
-                    if let msg = errorJson["msg"] as? String {
+                    if let msg = errorMessage {
                         logger.error("   Message: \(msg)")
                     }
                 }
             }
-            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+            
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode, errorCode: errorCode, message: errorMessage)
         }
         
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -366,7 +390,7 @@ struct Session: Codable, Sendable {
 enum NetworkError: Error, LocalizedError {
     case invalidResponse
     case invalidData
-    case httpError(statusCode: Int)
+    case httpError(statusCode: Int, errorCode: String? = nil, message: String? = nil)
     case unauthorized
     
     var errorDescription: String? {
@@ -375,8 +399,17 @@ enum NetworkError: Error, LocalizedError {
             return "Invalid server response"
         case .invalidData:
             return "Invalid data received"
-        case .httpError(let code):
-            return "HTTP error: \(code)"
+        case .httpError(let code, let errorCode, let message):
+            // Include detailed error information if available
+            if let errorCode = errorCode, let message = message {
+                return "\(errorCode): \(message)"
+            } else if let errorCode = errorCode {
+                return errorCode
+            } else if let message = message {
+                return message
+            } else {
+                return "HTTP error: \(code)"
+            }
         case .unauthorized:
             return "Authentication required"
         }

@@ -162,8 +162,10 @@ struct SignInView: View {
                     isLoading = false
                 }
             } catch {
+                // Use ErrorManager for user-friendly error messages
+                ErrorManager.shared.logError(error, context: "Sign In")
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userMessage
                     isLoading = false
                 }
             }
