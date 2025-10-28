@@ -13,14 +13,14 @@ struct ContentView: View {
     
     var body: some View {
         TabView {
+            FeedView()
+                .tabItem {
+                    Label("Feed", systemImage: "house.fill")
+                }
+            
             ActivitiesView()
                 .tabItem {
                     Label("Activities", systemImage: "figure.run")
-                }
-            
-            Text("Feed")
-                .tabItem {
-                    Label("Feed", systemImage: "house.fill")
                 }
             
             Text("Segments")

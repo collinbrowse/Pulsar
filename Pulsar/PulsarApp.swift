@@ -21,6 +21,9 @@ struct PulsarApp: App {
             Profile.self,
             Activity.self,
             TrackPoint.self,
+            Follow.self,
+            Kudo.self,
+            Comment.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
