@@ -13,6 +13,7 @@
 		BEF804EE2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804EB2EB0F7F20018966D /* MILESTONE_2_SUMMARY.md */; };
 		BEF804EF2EB0F7F20018966D /* MILESTONE_0_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804E92EB0F7F20018966D /* MILESTONE_0_SUMMARY.md */; };
 		BEF804F02EB0F7F20018966D /* MILESTONE_1_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = BEF804EA2EB0F7F20018966D /* MILESTONE_1_SUMMARY.md */; };
+		BEF8052D2EB124930018966D /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BEF8052C2EB124930018966D /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BEF8052D2EB124930018966D /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +143,7 @@
 			);
 			name = Pulsar;
 			packageProductDependencies = (
+				BEF8052C2EB124930018966D /* PostHog */,
 			);
 			productName = Pulsar;
 			productReference = BEF804432EAFF1D30018966D /* Pulsar.app */;
@@ -224,6 +227,9 @@
 			);
 			mainGroup = BEF8043A2EAFF1D30018966D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BEF8052B2EB124930018966D /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BEF804442EAFF1D30018966D /* Products */;
 			projectDirPath = "";
@@ -650,6 +656,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BEF8052B2EB124930018966D /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.34.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BEF8052C2EB124930018966D /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BEF8052B2EB124930018966D /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BEF8043B2EAFF1D30018966D /* Project object */;
 }
