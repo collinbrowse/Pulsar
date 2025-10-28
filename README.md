@@ -1,162 +1,116 @@
-# Pulsar - Activity Tracking & Social Fitness
+# 📱 Pulsar - Activity Tracking & Social Fitness
 
-A production-quality iOS app for activity tracking and social fitness, built with Swift 6.2, SwiftUI, and TCA.
+**Production-Quality iOS Application**  
+iOS 26+ | Swift 6.2 | SwiftUI | Supabase
 
-## Quick Start
+---
+
+## 🎯 Quick Start
 
 ### Prerequisites
+- Xcode 26+
+- iOS 26.0 SDK
+- macOS 15 (Sonoma)+
 
-- **Xcode 26** or later
-- **iOS 26.0** SDK
-- **macOS 15** (Sonoma) or later
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/pulsar.git
-   cd pulsar
-   ```
-
-2. **Configure environment variables**
-   
-   Copy `.env.example` to create your local environment file:
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Edit `.env.local` and add your API keys:
-   ```bash
-   # Required for backend functionality
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_ANON_KEY=your-anon-key-here
-   
-   # Optional: Analytics and observability
-   POSTHOG_API_KEY=your-posthog-api-key
-   ENABLE_ANALYTICS=false
-   ENABLE_CRASHLYTICS=false
-   
-   # Optional: Mapbox (feature-flagged)
-   MAPBOX_TOKEN=your-mapbox-token-here
-   USE_MAPBOX=false
-   ```
-
-3. **Open the project**
-   ```bash
-   open Pulsar.xcodeproj
-   ```
-
-4. **Build and run**
-   - Select a simulator or device
-   - Press `Cmd+R` to build and run
-
-### Running Tests
-
-**Swift Testing (Unit Tests)**
+### Setup & Run
 ```bash
-xcodebuild test \
-  -project Pulsar.xcodeproj \
-  -scheme PulsarTests \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+git clone https://github.com/your-username/pulsar.git
+cd pulsar
+cp .env.example .env.local
+# Edit .env.local with your API keys
+open Pulsar.xcodeproj
+# Press Cmd+R to run
 ```
 
-**XCTest (UI Tests)**
+---
+
+## 📚 Documentation
+
+**All documentation is now inside the Xcode project for easy access:**
+
+### 📖 Open in Xcode
+Navigate to: **`Pulsar/Documentation/README.md`**
+
+Or browse the documentation folders:
+- **Setup/** - Environment setup, dependencies, getting started
+- **Development/** - API docs, error tracking, bug fixes, test coverage
+- **Testing/** - UI testing guide
+- **Infrastructure/** - Supabase backend setup
+- **Milestones/** - Project progress and business reports
+- **Business/** - Business-oriented milestone reports
+
+### 📂 Quick Links
+- [Main Documentation](Pulsar/Documentation/README.md)
+- [Setup Guide](Pulsar/Documentation/Setup/GETTING_STARTED.md)
+- [Milestones Summary](Pulsar/Documentation/Milestones/MILESTONES_SUMMARY.md)
+- [Development Metrics](Pulsar/Documentation/METRICS.md)
+
+---
+
+## 🏗️ Tech Stack
+
+- **iOS**: Swift 6.2, SwiftUI, SwiftData
+- **Backend**: Supabase (PostgreSQL + PostGIS)
+- **Testing**: Swift Testing + XCTest
+- **Analytics**: PostHog
+- **Crash Reporting**: Firebase Crashlytics
+
+---
+
+## ✅ Progress
+
+- [x] M0: Foundation (CI/CD, project setup)
+- [x] M1: Backend scaffolding (Supabase, database)
+- [x] M2: Authentication & profiles
+- [x] M3: Activity import (GPX/TCX/FIT)
+- [x] M4: Social feed basics
+- [ ] M5: Segments & leaderboards
+- [ ] M6: Analytics & goals
+- [ ] M7-10: Routes, clubs, privacy, premium
+
+**See:** [Milestones Summary](Pulsar/Documentation/Milestones/MILESTONES_SUMMARY.md) for details.
+
+---
+
+## 🧪 Testing
+
 ```bash
-xcodebuild test \
-  -project Pulsar.xcodeproj \
-  -scheme PulsarUITests \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+# Run all tests
+xcodebuild test -project Pulsar.xcodeproj -scheme Pulsar
+
+# Or in Xcode
+Cmd+U
 ```
 
-Or simply press `Cmd+U` in Xcode to run all tests.
+**Current Status:**
+- ✅ 59 unit tests passing
+- ✅ 15+ UI tests passing
+- ✅ >80% test coverage
 
-## Architecture
+---
 
-- **State Management**: TCA (The Composable Architecture)
-- **Persistence**: SwiftData
-- **Networking**: URLSession with async/await
-- **UI**: SwiftUI
-- **Testing**: Swift Testing framework
+## 🚀 CI/CD
 
-See [docs/README.md](docs/README.md) for detailed architecture documentation.
-
-## Project Structure
-
-```
-Pulsar/
-├── App/                    # App entry point and global state
-├── Features/               # Feature modules (Onboarding, Feed, etc.)
-├── Shared/                 # Shared models, networking, UI components
-└── Resources/              # Assets and resources
-
-PulsarTests/               # Unit tests (Swift Testing)
-PulsarUITests/             # UI tests (XCTest)
-docs/                      # Documentation
-```
-
-## Development
-
-### Branching Strategy
-
-- `main` - Production-ready code
-- `milestone-N-feature` - Feature branches for each milestone
-- Create PRs with description, test plan, and screenshots
-
-### Code Style
-
-- Follow Swift API Design Guidelines
-- Run SwiftLint before committing: `swiftlint lint`
-- Format code consistently (use Xcode's default formatting)
-
-### Continuous Integration
-
-GitHub Actions automatically runs on every push and PR:
+GitHub Actions runs on every push:
 - ✅ Build verification
-- ✅ Unit tests
-- ✅ UI tests
-- ✅ Code coverage reporting
-- ✅ Linting with SwiftLint
-- ✅ Security checks
+- ✅ All tests (unit + UI)
+- ✅ SwiftLint checks
+- ✅ Code coverage
 
-## Feature Flags
+---
 
-The app uses feature flags for gradual rollout:
-
-- `ENABLE_ANALYTICS` - PostHog analytics (default: false)
-- `ENABLE_CRASHLYTICS` - Firebase Crashlytics (default: false)
-- `USE_MAPBOX` - Mapbox instead of MapKit (default: false)
-
-Set these in your `.env.local` file or via Xcode scheme environment variables.
-
-## Backend
-
-The app uses **Supabase** for backend services:
-- PostgreSQL + PostGIS for geospatial data
-- Supabase Auth for authentication
-- Supabase Storage for activity files
-- Edge Functions for business logic
-
-See [docs/API.md](docs/API.md) for API documentation.
-
-## Milestones
-
-- [x] **Milestone 0**: Repository, CI, project bootstrap
-- [ ] **Milestone 1**: Supabase backend scaffolding
-- [ ] **Milestone 2**: Auth & user profiles
-- [ ] **Milestone 3**: Activity import pipeline
-- [ ] **Milestone 4**: Feed & social
-- [ ] **Milestone 5**: Segments & leaderboards
-- [ ] **Milestone 6**: Analytics & goals
-- [ ] **Milestone 7**: Routes & discovery
-- [ ] **Milestone 8**: Clubs & challenges
-- [ ] **Milestone 9**: Privacy & data controls
-- [ ] **Milestone 10**: Premium tier & monetization
-
-## License
+## 📄 License
 
 Proprietary - All rights reserved
 
-## Support
+---
 
-For questions or issues, please open a GitHub issue or contact the development team.
+## 🆘 Support
 
+**For detailed documentation, open the project in Xcode and navigate to:**
+
+```
+Pulsar/Documentation/
+```
+
+**All guides, setup instructions, and API docs are there! 📖**
