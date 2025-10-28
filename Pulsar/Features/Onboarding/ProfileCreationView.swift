@@ -14,6 +14,7 @@ struct ProfileCreationView: View {
     let email: String
     @Binding var path: NavigationPath
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     
     @State private var username: String
     @State private var fullName: String
@@ -194,7 +195,9 @@ struct ProfileCreationView: View {
         .navigationBarBackButtonHidden()
         .alert("Profile Created!", isPresented: $showSuccess) {
             Button("Get Started") {
-                // TODO: Navigate to main app
+                // Mark user as authenticated and set current user ID
+                appState.isAuthenticated = true
+                appState.currentUserID = userID
                 path = NavigationPath()
             }
         } message: {

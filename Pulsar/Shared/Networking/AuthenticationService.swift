@@ -111,8 +111,8 @@ final class AuthenticationService: Sendable {
     
     // MARK: - Profile Management
     
-    func fetchProfile(userID: String) async throws -> ProfileDTO {
-        logger.info("Fetching profile for user: \(userID)")
+    func fetchProfiles(userID: String) async throws -> [ProfileDTO] {
+        logger.info("Fetching profiles for user: \(userID)")
         
         guard let token = accessToken else {
             throw AuthError.notAuthenticated
@@ -123,6 +123,14 @@ final class AuthenticationService: Sendable {
             filter: ["user_id": userID],
             accessToken: token
         )
+        
+        return profiles
+    }
+    
+    func fetchProfile(userID: String) async throws -> ProfileDTO {
+        logger.info("Fetching profile for user: \(userID)")
+        
+        let profiles = try await fetchProfiles(userID: userID)
         
         guard let profile = profiles.first else {
             throw AuthError.profileNotFound

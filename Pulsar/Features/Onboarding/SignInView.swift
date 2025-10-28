@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SignInView: View {
     @Binding var path: NavigationPath
+    @Environment(AppState.self) private var appState
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
@@ -139,15 +140,26 @@ struct SignInView: View {
             do {
                 let session = try await authService.signIn(email: email, password: password)
                 
-                // Fetch existing profile or navigate to profile creation
+                // Check if profile exists
+                let profiles: [ProfileDTO] = try await authService.fetchProfiles(userID: session.userId)
+                
                 await MainActor.run {
-                    // For now, always go to profile creation
-                    // TODO: Check if profile exists and go to main app if it does
-                    path.append(OnboardingDestination.profileCreation(
-                        userID: session.userId,
-                        email: email,
-                        username: "existing_user"
-                    ))
+                    if let existingProfile = profiles.first {
+                        // Profile exists - user is fully set up
+                        print("Existing profile found: \(existingProfile.username)")
+                        appState.isAuthenticated = true
+                        appState.currentUserID = session.userId
+                        // TODO: Load profile into SwiftData
+                    } else {
+                        // No profile - navigate to profile creation
+                        print("No profile found - navigating to profile creation")
+                        path.append(OnboardingDestination.profileCreation(
+                            userID: session.userId,
+                            email: email,
+                            username: "user_\(session.userId.prefix(8))"
+                        ))
+                    }
+                    isLoading = false
                 }
             } catch {
                 await MainActor.run {
