@@ -242,35 +242,61 @@ final class SupabaseClient: Sendable {
             // Try format with timezone offset (PostgreSQL default): yyyy-MM-dd'T'HH:mm:ssZZZZZ
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
             if let date = dateFormatter.date(from: dateString) {
+                logger.debug("✅ Decoded date '\(dateString)' using format: yyyy-MM-dd'T'HH:mm:ssZZZZZ")
                 return date
             }
             
             // Try format with fractional seconds: yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
             if let date = dateFormatter.date(from: dateString) {
+                logger.debug("✅ Decoded date '\(dateString)' using format: yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ")
                 return date
             }
             
             // Try format with Z (Zulu time)
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
             if let date = dateFormatter.date(from: dateString) {
+                logger.debug("✅ Decoded date '\(dateString)' using format: yyyy-MM-dd'T'HH:mm:ss'Z'")
                 return date
             }
             
             // Try with fractional seconds and Z
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
             if let date = dateFormatter.date(from: dateString) {
+                logger.debug("✅ Decoded date '\(dateString)' using format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
                 return date
             }
             
+            logger.error("❌ Failed to decode date string: '\(dateString)'")
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Cannot decode date string: \(dateString)"
             )
         }
-        let result = try decoder.decode([T].self, from: data)
-        logger.debug("   Decoded \(result.count) items")
-        return result
+        
+        do {
+            let result = try decoder.decode([T].self, from: data)
+            logger.debug("   Decoded \(result.count) items successfully")
+            return result
+        } catch {
+            logger.error("❌ Decoding failed: \(error.localizedDescription)")
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .keyNotFound(let key, let context):
+                    logger.error("   Missing key: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: " -> "))")
+                case .typeMismatch(let type, let context):
+                    logger.error("   Type mismatch for type: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: " -> "))")
+                case .valueNotFound(let type, let context):
+                    logger.error("   Value not found for type: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: " -> "))")
+                case .dataCorrupted(let context):
+                    logger.error("   Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: " -> "))")
+                    logger.error("   Description: \(context.debugDescription)")
+                @unknown default:
+                    logger.error("   Unknown decoding error")
+                }
+            }
+            throw error
+        }
     }
     
     func upsert<T: Encodable>(
