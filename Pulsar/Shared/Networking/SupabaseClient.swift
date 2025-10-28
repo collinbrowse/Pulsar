@@ -195,9 +195,63 @@ final class SupabaseClient: Sendable {
         
         logger.info("✅ Fetch Success: \(data.count) bytes received")
         
+        // Log the actual response for debugging
+        if let responseString = String(data: data, encoding: .utf8) {
+            logger.debug("   Response: \(responseString)")
+        }
+        
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode([T].self, from: data)
+        let result = try decoder.decode([T].self, from: data)
+        logger.debug("   Decoded \(result.count) items")
+        return result
+    }
+    
+    func upsert<T: Encodable>(
+        table: String,
+        data: T,
+        accessToken: String
+    ) async throws {
+        let endpoint = baseURL.appendingPathComponent("/rest/v1/\(table)")
+        
+        logger.info("📤 Upsert Request: POST \(endpoint.absoluteString)")
+        
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("public", forHTTPHeaderField: "Content-Profile") // Use public schema for writes
+        request.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer") // Upsert on conflict
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(data)
+        
+        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+            logger.debug("   Body: \(bodyString)")
+        }
+        
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ Upsert: Invalid HTTP response")
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorString = String(data: responseData, encoding: .utf8) {
+                logger.error("❌ Upsert Error (\(httpResponse.statusCode)): \(errorString)")
+                print("Supabase upsert error (\(httpResponse.statusCode)): \(errorString)")
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        
+        if let responseString = String(data: responseData, encoding: .utf8) {
+            logger.info("✅ Upsert Success - Response: \(responseString)")
+        } else {
+            logger.info("✅ Upsert Success")
+        }
     }
     
     func update<T: Encodable>(
@@ -221,6 +275,7 @@ final class SupabaseClient: Sendable {
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("public", forHTTPHeaderField: "Content-Profile") // Use public schema for writes
+        request.setValue("return=representation", forHTTPHeaderField: "Prefer") // Return updated rows
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         
@@ -247,7 +302,15 @@ final class SupabaseClient: Sendable {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         
-        logger.info("✅ Update Success")
+        // Log the response to verify rows were updated
+        if let responseString = String(data: responseData, encoding: .utf8) {
+            logger.info("✅ Update Success - Response: \(responseString)")
+            if responseString == "[]" || responseString.isEmpty {
+                logger.warning("⚠️ Update returned empty response - no rows were updated!")
+            }
+        } else {
+            logger.info("✅ Update Success")
+        }
     }
     
     // MARK: - Edge Functions

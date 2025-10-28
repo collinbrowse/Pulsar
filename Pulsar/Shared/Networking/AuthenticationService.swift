@@ -140,21 +140,20 @@ final class AuthenticationService: Sendable {
     }
     
     func updateProfile(_ profile: ProfileDTO) async throws {
-        logger.info("Updating profile for user: \(profile.userId)")
+        logger.info("Upserting profile for user: \(profile.userId)")
         
         guard let token = accessToken else {
             throw AuthError.notAuthenticated
         }
         
-        // Update profile using REST API
-        try await supabaseClient.update(
+        // Upsert profile (create if not exists, update if exists)
+        try await supabaseClient.upsert(
             table: "profiles",
             data: profile,
-            filter: ["user_id": profile.userId],
             accessToken: token
         )
         
-        logger.info("Profile updated successfully")
+        logger.info("Profile upserted successfully")
         
         ObservabilityManager.shared.track(event: "profile_updated", properties: [
             "user_id": profile.userId
