@@ -76,17 +76,8 @@ struct ProfileDTO: Codable, Sendable {
     let createdAt: Date?
     let updatedAt: Date?
     
-    enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case username
-        case fullName = "full_name"
-        case avatarUrl = "avatar_url"
-        case gender
-        case weightKg = "weight_kg"
-        case birthYear = "birth_year"
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
+    // Note: We rely on JSONDecoder's .convertFromSnakeCase strategy
+    // No custom CodingKeys needed - the decoder handles user_id -> userId automatically
 }
 
 // MARK: - Conversion Extensions
