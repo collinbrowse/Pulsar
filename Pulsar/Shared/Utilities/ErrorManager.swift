@@ -201,12 +201,48 @@ final class ErrorManager {
         return appError.userMessage
     }
     
-    /// Log error with technical details
+    /// Log error with technical details and report to analytics
     func logError(_ error: Error, context: String = "") {
         let appError = parseError(error)
         let contextString = context.isEmpty ? "" : " [\(context)]"
         print("❌ Error\(contextString): \(appError.technicalDescription)")
         print("   User Message: \(appError.userMessage)")
+        
+        // Report to ObservabilityManager for PostHog + Crashlytics
+        ObservabilityManager.shared.reportErrorDetailed(
+            error,
+            errorType: String(describing: appError),
+            userMessage: appError.userMessage,
+            technicalDetails: appError.technicalDescription,
+            context: context,
+            severity: getSeverity(for: appError),
+            recoverable: appError.shouldAutoRecover
+        )
+    }
+    
+    /// Determine error severity for product analytics
+    private func getSeverity(for error: AppError) -> ErrorSeverity {
+        switch error {
+        // Critical - blocks core functionality
+        case .authenticationRequired, .serverError:
+            return .critical
+            
+        // High - blocks key features
+        case .userAlreadyExists, .invalidCredentials, .networkError:
+            return .high
+            
+        // Medium - impacts UX but has workarounds
+        case .emailNotConfirmed, .weakPassword, .invalidEmail, .invalidUsername:
+            return .medium
+            
+        // Low - validation errors, user can fix easily
+        case .validationError:
+            return .low
+            
+        // Default
+        case .timeout, .unknown:
+            return .medium
+        }
     }
     
     /// Check if error should trigger automatic recovery
