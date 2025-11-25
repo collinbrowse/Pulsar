@@ -15,7 +15,7 @@ final class Activity {
     // MARK: - Identity
     
     @Attribute(.unique) var id: String
-    var userID: String
+    var userId: String
     
     // MARK: - Metadata
     
@@ -67,7 +67,7 @@ final class Activity {
     
     init(
         id: String = UUID().uuidString,
-        userID: String,
+        userId: String,
         name: String,
         activityType: ActivityType,
         startDate: Date,
@@ -78,7 +78,7 @@ final class Activity {
         isPrivate: Bool = false
     ) {
         self.id = id
-        self.userID = userID
+        self.userId = userId
         self.name = name
         self.activityType = activityType
         self.startDate = startDate
@@ -265,13 +265,75 @@ struct ActivityDTO: Codable, Sendable {
     }
 }
 
+// MARK: - Backend DTO (matches Supabase schema)
+
+struct ActivityBackendDTO: Codable, Sendable {
+    let activityId: String? // Optional for inserts (backend generates UUID)
+    let userId: String
+    let activityType: String
+    let name: String
+    let description: String?
+    let distanceM: Double
+    let durationSec: Int
+    let elevationGainM: Double?
+    let elevationLossM: Double?
+    let maxElevation: Double?
+    let minElevation: Double?
+    let avgHeartRate: Int?
+    let maxHeartRate: Int?
+    let avgPower: Int?
+    let maxPower: Int?
+    let avgCadence: Int?
+    let maxCadence: Int?
+    let startTime: Date
+    let endTime: Date?
+    let startLat: Double?
+    let startLon: Double?
+    let endLat: Double?
+    let endLon: Double?
+    let geom: String? // PostGIS LineString in WKT format: "SRID=4326;LINESTRING(lon lat, lon lat, ...)"
+    let visibility: String // "public", "followers", or "private"
+    let fileUrl: String?
+    let originalFileName: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case activityId = "activity_id"
+        case userId = "user_id"
+        case activityType = "activity_type"
+        case name
+        case description
+        case distanceM = "distance_m"
+        case durationSec = "duration_sec"
+        case elevationGainM = "elevation_gain_m"
+        case elevationLossM = "elevation_loss_m"
+        case maxElevation = "max_elevation"
+        case minElevation = "min_elevation"
+        case avgHeartRate = "avg_heart_rate"
+        case maxHeartRate = "max_heart_rate"
+        case avgPower = "avg_power"
+        case maxPower = "max_power"
+        case avgCadence = "avg_cadence"
+        case maxCadence = "max_cadence"
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case startLat = "start_lat"
+        case startLon = "start_lon"
+        case endLat = "end_lat"
+        case endLon = "end_lon"
+        case geom
+        case visibility
+        case fileUrl = "file_url"
+        case originalFileName = "original_file_name"
+    }
+}
+
 // MARK: - Conversion Extensions
 
 extension Activity {
     func toDTO() -> ActivityDTO {
         ActivityDTO(
             id: id,
-            userId: userID,
+            userId: userId,
             name: name,
             activityType: activityType.rawValue,
             startDate: startDate,
@@ -305,7 +367,7 @@ extension Activity {
     static func fromDTO(_ dto: ActivityDTO) -> Activity {
         let activity = Activity(
             id: dto.id,
-            userID: dto.userId,
+            userId: dto.userId,
             name: dto.name,
             activityType: ActivityType(rawValue: dto.activityType) ?? .other,
             startDate: dto.startDate,

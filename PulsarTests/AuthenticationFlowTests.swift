@@ -11,6 +11,7 @@ import Testing
 
 /// Comprehensive tests for authentication flows and profile persistence
 @Suite("Authentication Flow Tests")
+@MainActor
 struct AuthenticationFlowTests {
     
     @Test("Profile persistence: Upsert should handle new profiles")
@@ -19,21 +20,22 @@ struct AuthenticationFlowTests {
         // In production, this would make an actual API call
         // For now, we verify the data structure is correct
         
-        let userID = "test-user-new"
+        let userId = "test-user-new"
         let profile = ProfileDTO(
-            userId: userID,
+            userId: userId,
             username: "newuser",
             fullName: "New User",
             avatarUrl: nil,
             gender: "male",
             weightKg: 70.0,
             birthYear: 1995,
+            useMetricUnits: false,
             createdAt: Date(),
             updatedAt: Date()
         )
         
         // Verify DTO is properly formed
-        #expect(profile.userId == userID)
+        #expect(profile.userId == userId)
         #expect(profile.username == "newuser")
         #expect(profile.fullName == "New User")
         
@@ -47,27 +49,29 @@ struct AuthenticationFlowTests {
     func testUpsertUpdatesExistingProfile() async throws {
         // This test validates that upsert can update an existing profile
         
-        let userID = "test-user-existing"
+        let userId = "test-user-existing"
         let originalProfile = ProfileDTO(
-            userId: userID,
+            userId: userId,
             username: "original",
             fullName: "Original Name",
             avatarUrl: nil,
             gender: "female",
             weightKg: 60.0,
             birthYear: 1990,
+            useMetricUnits: true,
             createdAt: Date(),
             updatedAt: Date()
         )
         
         let updatedProfile = ProfileDTO(
-            userId: userID, // Same user_id
+            userId: userId, // Same user_id
             username: "updated", // Changed
             fullName: "Updated Name", // Changed
             avatarUrl: nil,
             gender: "female",
             weightKg: 65.0, // Changed
             birthYear: 1990,
+            useMetricUnits: true,
             createdAt: originalProfile.createdAt,
             updatedAt: Date()
         )
@@ -99,6 +103,7 @@ struct AuthenticationFlowTests {
                 gender: "other",
                 weightKg: nil,
                 birthYear: nil,
+                useMetricUnits: false,
                 createdAt: Date(),
                 updatedAt: Date()
             )
@@ -196,6 +201,7 @@ struct AuthenticationFlowTests {
             gender: "prefer_not_to_say",
             weightKg: 75.5,
             birthYear: 1992,
+            useMetricUnits: true,
             createdAt: Date(),
             updatedAt: Date()
         )

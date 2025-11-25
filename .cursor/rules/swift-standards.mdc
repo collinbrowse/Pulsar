@@ -1,0 +1,687 @@
+---
+description: Modern Swift coding standards and best practices for Pulsar
+globs: **/*.swift
+alwaysApply: true
+---
+
+# Swift Coding Standards
+
+Follow modern Swift 6+ best practices. All new code must use Swift 6 or later. All new features must be built in SwiftUI (no UIKit).
+
+## Swift Version
+
+- **Use Swift 6+ for All New Code**: All new code must be written using Swift 6 or later:
+  - Use Swift 6 language features and concurrency improvements
+  - Leverage Swift 6's enhanced type safety, concurrency model, and data-race safety features
+  - All new files, classes, and functions should use Swift 6 syntax and conventions
+- **Important**: When writing new code, use Swift 6+ features even if the project currently targets an older Swift version.
+
+## UI Framework
+
+**All new features must be built in SwiftUI.** Pulsar is a SwiftUI-only application.
+
+### SwiftUI-First Development
+
+- All UI components and screens must be built in SwiftUI
+- Use SwiftUI's declarative syntax and modern view composition
+- Leverage SwiftUI modifiers and view builders
+- Use SwiftUI's native navigation (NavigationStack, NavigationLink)
+- No UIKit code should be added to the project
+
+```swift
+// Good: SwiftUI view with SwiftData
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    
+    var body: some View {
+        NavigationStack {
+            List(activities) { activity in
+                ActivityRow(activity: activity)
+            }
+            .navigationTitle("Activities")
+            .refreshable {
+                await syncActivities()
+            }
+        }
+    }
+    
+    private func syncActivities() async {
+        guard let userId = appState.currentUserId else { return }
+        try? await ActivityService.shared.syncActivitiesFromBackend(
+            for: userId, modelContext: modelContext
+        )
+    }
+}
+```
+
+### Modern SwiftUI Patterns
+
+- Use `@Observable` macro for AppState and optional ViewModels
+- Use `@Query` for SwiftData reactive data fetching (default pattern)
+- Use `@State` for local view state
+- Use `@Environment` for dependency injection (ModelContext, AppState)
+- Use `@Binding` for two-way data flow
+- Use `.task { }` modifier for async work tied to view lifecycle
+- Use `NavigationStack` (iOS 16+) instead of `NavigationView`
+- Prefer SwiftUI's native components
+
+## Architecture: Hybrid Approach
+
+Pulsar uses a **hybrid architecture** that balances SwiftUI's declarative nature with testability:
+
+### Default Pattern: SwiftUI + Services + SwiftData
+
+**Use this pattern for simple views** (most views in Pulsar):
+
+```swift
+// Good: Default pattern - Views + Services + SwiftData
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    
+    private func syncActivities() async {
+        guard let userId = appState.currentUserId else { return }
+        try? await ActivityService.shared.syncActivitiesFromBackend(
+            for: userId, modelContext: modelContext
+        )
+    }
+}
+```
+
+**Characteristics:**
+- Views use `@Query` for SwiftData reactive data binding
+- Direct service calls (ActivityService.shared, SocialService.shared)
+- Business logic in Services (`@MainActor` singletons), not Views
+- `@Observable` AppState for global application state
+- Views handle UI state with `@State`
+- Use for: simple list views, CRUD operations, views that primarily display data
+- Examples: ActivitiesView, FeedView
+
+### Optional Pattern: MVVM with ViewModels
+
+**Use this pattern for complex screens** (when complexity justifies it):
+
+```swift
+// Good: ViewModel pattern for complex screens
+@MainActor
+@Observable
+final class ActivityDetailViewModel: DynamicProperty {
+    @Query private var activities: [Activity]
+    
+    var isLoading = false
+    var errorMessage: String?
+    var useMetricUnits = false
+    
+    private let activityService: ActivityService
+    
+    init(activityService: ActivityService = .shared) {
+        self.activityService = activityService
+    }
+    
+    func recalculateMetrics(modelContext: ModelContext) async {
+        isLoading = true
+        defer { isLoading = false }
+        // Complex logic here
+    }
+}
+
+// View using ViewModel
+struct ActivityDetailView: View {
+    @State private var viewModel: ActivityDetailViewModel
+    let activity: Activity
+    
+    var body: some View {
+        // View implementation
+    }
+}
+```
+
+**Characteristics:**
+- ViewModels using `@Observable` macro and `DynamicProperty` protocol
+- ViewModels can use `@Query` via `DynamicProperty` to access SwiftData
+- Centralized state management (loading states, errors, derived data)
+- ViewModels call Services for business logic
+- Use for: complex screens with multiple data sources, heavy state management, screens requiring extensive unit testing
+- Decision criteria: 3+ data sources, complex state, extensive testing needs
+
+## Modern Swift Patterns
+
+### Async/Await
+
+Prefer async/await over completion handlers:
+
+```swift
+// Good: Modern async/await
+func fetchData() async throws -> Data {
+    let url = URL(string: "https://api.example.com/data")!
+    let (data, _) = try await URLSession.shared.data(from: url)
+    return data
+}
+
+// Bad: Old completion handler pattern
+func fetchData(completion: @escaping (Result<Data, Error>) -> Void) {
+    // Avoid this pattern for new code
+}
+```
+
+- Use `async throws` for functions that can fail
+- Use `await` for asynchronous operations
+- Prefer structured concurrency with `Task` over GCD
+- All networking and async operations use async/await
+
+### MainActor and Thread Safety
+
+Mark UI-related classes and services with `@MainActor`:
+
+```swift
+// Good: Services that update UI state
+@MainActor
+final class ActivityService: Sendable {
+    static let shared = ActivityService()
+    
+    func syncActivitiesFromBackend(
+        for userId: String,
+        modelContext: ModelContext
+    ) async throws {
+        // Service logic
+    }
+}
+
+// Good: AppState for global state
+@Observable
+final class AppState: Sendable {
+    var isAuthenticated: Bool = false
+    var currentUserId: String?
+}
+```
+
+- Services that update UI state should be marked `@MainActor`
+- SwiftUI views automatically run on `@MainActor`
+- Use `await MainActor.run { }` to switch to main thread when needed in async contexts
+- Use `nonisolated` only when you're certain a method doesn't need thread isolation
+
+### Structured Concurrency
+
+```swift
+// Good: Proper Task usage in views
+struct ActivitiesView: View {
+    private func deleteActivities(at offsets: IndexSet) {
+        Task {
+            for index in offsets {
+                let activity = activities[index]
+                try? await ActivityService.shared.deleteActivity(
+                    activity, modelContext: modelContext
+                )
+            }
+        }
+    }
+}
+
+// Good: Cancellable tasks in services
+@MainActor
+final class ActivityService {
+    private var syncTask: Task<Void, Never>?
+    
+    func syncActivities() async {
+        syncTask?.cancel()
+        syncTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            // Sync logic
+        }
+    }
+}
+```
+
+### Property Wrappers
+
+Use appropriate property wrappers:
+
+```swift
+// Good: SwiftUI property wrappers
+@State              // SwiftUI local state
+@Observable          // Observable macro for AppState and ViewModels
+@Query               // SwiftData query (default pattern)
+@Environment         // SwiftUI environment (ModelContext, AppState)
+@Binding             // SwiftUI binding
+
+// Good: SwiftData
+@Model               // SwiftData model
+@Query               // SwiftData query for reactive data fetching
+```
+
+### Error Handling
+
+```swift
+// Good: Specific error types
+enum ActivityServiceError: Error, LocalizedError {
+    case unsupportedFileFormat(String)
+    case invalidFileData
+    case parsingFailed(String)
+    case noTrackPoints
+    case invalidCoordinates
+    case notAuthenticated
+    
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedFileFormat(let format):
+            return "Unsupported file format: .\(format)"
+        // ... other cases
+        }
+    }
+}
+
+// Good: Proper error propagation
+func parseActivityFile(from url: URL, userId: String) async throws -> Activity {
+    let fileExtension = url.pathExtension.lowercased()
+    switch fileExtension {
+    case "gpx":
+        return try await parseGPX(data: data, fileName: url.lastPathComponent, userId: userId)
+    default:
+        throw ActivityServiceError.unsupportedFileFormat(fileExtension)
+    }
+}
+
+// Good: Error handling in UI
+Task {
+    do {
+        let activity = try await activityService.parseActivityFile(from: url, userId: userId)
+        // Handle success
+    } catch {
+        errorMessage = error.localizedDescription
+    }
+}
+```
+
+### Access Control
+
+```swift
+// Good: Explicit access control
+@MainActor
+final class ActivityService: Sendable {
+    static let shared = ActivityService()
+    
+    private init() {}  // Private singleton init
+    
+    // Public interface
+    func parseActivityFile(from url: URL, userId: String) async throws -> Activity {
+        // Implementation
+    }
+    
+    // Private helpers
+    private func parseGPX(data: Data, fileName: String, userId: String) async throws -> Activity {
+        // Implementation
+    }
+}
+```
+
+- Use `private` by default for implementation details
+- Use `internal` (default) for module-internal APIs
+- Use `public` only for public APIs
+- Services use `static let shared` pattern for singletons
+
+### Optionals
+
+```swift
+// Good: Proper optional handling
+guard let userId = appState.currentUserId else {
+    return
+}
+
+// Good: Optional chaining
+let profile = profiles.first { $0.userId == userId }
+
+// Good: Nil coalescing
+let useMetric = profile?.useMetricUnits ?? false
+
+// Bad: Force unwrapping without safety
+let userId = appState.currentUserId! // Avoid unless absolutely safe
+```
+
+### Closures
+
+```swift
+// Good: Modern closure syntax
+let activities = allActivities.filter { $0.userId == userId }
+
+// Good: Explicit parameter names when helpful
+let sorted = activities.sorted { first, second in
+    first.startDate > second.startDate
+}
+
+// Good: Weak self in closures
+Task { @MainActor [weak self] in
+    guard let self = self else { return }
+    self.doSomething()
+}
+```
+
+### SwiftData
+
+When using SwiftData:
+
+```swift
+// Good: SwiftData models
+@Model
+final class Activity {
+    @Attribute(.unique) var id: String
+    var userId: String
+    var name: String
+    var distance: Double
+    
+    @Relationship(deleteRule: .cascade) var trackPoints: [TrackPoint]?
+    
+    init(id: String = UUID().uuidString, userId: String, name: String, distance: Double) {
+        self.id = id
+        self.userId = userId
+        self.name = name
+        self.distance = distance
+    }
+}
+
+// Good: SwiftData queries in SwiftUI (default pattern)
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    
+    var body: some View {
+        List(activities) { activity in
+            ActivityRow(activity: activity)
+        }
+    }
+}
+```
+
+### Code Organization
+
+```swift
+// Good: MARK comments for organization
+@MainActor
+final class ActivityService: Sendable {
+    // MARK: - Properties
+    static let shared = ActivityService()
+    
+    // MARK: - File Parsing
+    func parseActivityFile(from url: URL, userId: String) async throws -> Activity {
+        // Implementation
+    }
+    
+    // MARK: - Storage
+    func saveActivity(_ activity: Activity, modelContext: ModelContext) async throws {
+        // Implementation
+    }
+    
+    // MARK: - Helpers
+    private func calculateDistance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        // Implementation
+    }
+}
+```
+
+### Naming Conventions
+
+```swift
+// Good: Clear, descriptive names
+func fetchActivities(for userId: String, modelContext: ModelContext) throws -> [Activity]
+let maximumRetryCount = 3
+var isLoadingData = false
+
+// Good: Protocols with descriptive names
+protocol ActivityServiceProtocol { }
+
+// Good: Type names use PascalCase
+class ActivityService { }
+struct ActivityDTO { }
+enum ActivityType { }
+
+// Good: Variable names use camelCase
+let userProfile = UserProfile()
+var isAuthenticated = false
+
+// Good: Variables with "ID" use lowercase "d"
+let activityId = "123"
+let userId = "456"
+let segmentId = "789"
+
+// Bad: Variables with "ID" using uppercase "D"
+let activityID = "123"  // Avoid
+let userID = "456"  // Avoid
+let segmentID = "789"  // Avoid
+```
+
+### Syntax and Formatting
+
+#### Switch Statement Indentation
+
+```swift
+// Good: Case statements indented one tab from switch
+switch fileExtension {
+	case "gpx":
+		return try await parseGPX(data: data, fileName: fileName, userId: userId)
+	case "tcx":
+		return try await parseTCX(data: data, fileName: fileName, userId: userId)
+	case "fit":
+		return try await parseFIT(data: data, fileName: fileName, userId: userId)
+	default:
+		throw ActivityServiceError.unsupportedFileFormat(fileExtension)
+}
+
+// Bad: Case statements not indented
+switch fileExtension {
+case "gpx":  // Avoid - should be indented
+	return try await parseGPX(...)
+}
+```
+
+- Case statements inside switch statements must be indented one tab from the `switch` keyword
+- This applies to all switch statements regardless of context
+
+### Extensions
+
+```swift
+// Good: Organized extensions
+extension ActivityService {
+    // MARK: - Helpers
+    private func calculateDistance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        // Implementation
+    }
+}
+
+// Good: Protocol conformance in extensions
+extension Activity: Codable {
+    // Codable implementation
+}
+```
+
+## SwiftUI Best Practices
+
+- Use `@Query` for SwiftData reactive data fetching (default pattern)
+- Use `@Observable` for AppState and optional ViewModels
+- Use `@State` for local view state
+- Use `@Environment` for dependency injection
+- Use `@Binding` for two-way data flow
+- Use `.task { }` modifier for async work tied to view lifecycle
+- Use `NavigationStack` (iOS 16+) instead of `NavigationView`
+- Direct service calls from views (default pattern)
+- Add ViewModels only when complexity justifies it (3+ data sources, complex state, extensive testing)
+
+### Reusable Content Views
+
+For reusable content views (pure UI presentation components), use simple data types:
+
+```swift
+// Good: Content view with simple data types
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+            Text(value)
+            Text(title)
+        }
+    }
+}
+
+// Bad: Content view with SwiftData model
+struct ActivityCard: View {
+    let activity: Activity  // ❌ Avoid SwiftData models in content views
+    
+    var body: some View {
+        // ...
+    }
+}
+
+// Good: Root view passes simple data to content view
+struct ActivityRow: View {
+    let activity: Activity
+    @Query private var profiles: [Profile]
+    
+    var body: some View {
+        ActivityRowContent(
+            name: activity.name,
+            distance: activity.distance,
+            duration: activity.duration,
+            date: activity.startDate
+        )
+    }
+}
+
+// Good: Content view with simple types
+struct ActivityRowContent: View {
+    let name: String
+    let distance: Double
+    let duration: Double
+    let date: Date
+    
+    var body: some View {
+        // Pure UI presentation
+    }
+}
+```
+
+**Content View Guidelines:**
+- Accept simple types: `String`, `Int`, `Double`, `Date`, `URL`, `Bool`, `Color`, `Image`
+- Avoid SwiftData models (`Activity`, `Profile`, etc.) - extract data in root view
+- No `@Query` or `@Environment(\.modelContext)` in content views
+- No Service calls or ViewModels in content views
+- Makes views reusable, testable, and preview-friendly
+
+For detailed guidelines on Root/Content view patterns, see [swiftui-view-composition.mdc](mdc:.cursor/rules/swiftui-view-composition.mdc).
+
+## Performance
+
+- Prefer value types (structs, enums) when appropriate
+- Use `lazy var` for expensive computations
+- Use `@Query` for reactive data (no manual state duplication)
+- Cache expensive computations
+- Services are singletons to avoid unnecessary instantiation
+
+## Documentation
+
+```swift
+/// Parses an activity file (GPX, TCX, or FIT) and creates an Activity model.
+/// - Parameters:
+///   - url: The file URL to parse
+///   - userId: The unique identifier for the user
+/// - Returns: An `Activity` object containing parsed activity data
+/// - Throws: `ActivityServiceError` if parsing fails
+func parseActivityFile(from url: URL, userId: String) async throws -> Activity {
+    // Implementation
+}
+```
+
+## Avoiding Anti-Patterns
+
+```swift
+// Bad: Force unwrapping
+let userId = appState.currentUserId!
+
+// Bad: Unnecessary force unwrapping
+if let userId = appState.currentUserId {
+    let id = userId! // Already unwrapped
+}
+
+// Bad: Ignoring errors
+try? someFunction() // Use proper error handling
+
+// Bad: Retain cycles
+Task {
+    self.doSomething() // Missing [weak self]
+}
+
+// Bad: Thread-unsafe UI updates
+Task {
+    self.uiProperty = value // Missing @MainActor
+}
+
+// Bad: Adding ViewModels to simple views
+struct SimpleListView: View {
+    @State private var viewModel: SimpleListViewModel // Unnecessary - use @Query instead
+}
+
+// Bad: Content view with SwiftData model
+struct ActivityCard: View {
+    let activity: Activity  // ❌ Content views should accept simple types, not SwiftData models
+    var body: some View { /* ... */ }
+}
+
+// Bad: Content view using @Query
+struct StatCard: View {
+    @Query private var activities: [Activity]  // ❌ Content views shouldn't use @Query
+    var body: some View { /* ... */ }
+}
+```
+
+## Migration Notes
+
+When updating code:
+1. Convert completion handlers to async/await
+2. Replace GCD with structured concurrency where appropriate
+3. Add `@MainActor` to services that update UI state
+4. Update error handling to use typed errors
+5. Review access control and make properties `private` by default
+6. Use `@Query` for SwiftData instead of manual fetching (default pattern)
+7. Add ViewModels only when complexity justifies it
+
+All new code must use Swift 6+ features. The project's Swift Language Version is set to Swift 6.
+
+## Testing Patterns
+
+**All new features must have complete test coverage following Test-Driven Development (TDD).**
+
+- Write tests first, then implement functionality
+- All new code must include corresponding unit tests or UI tests as appropriate
+- Test coverage should include happy paths, error cases, and edge cases
+- Services, Models, and ViewModels (if used) should have unit tests
+- UI components should have UI tests for user interactions
+- Follow the existing test patterns and organization in `PulsarTests/` and `PulsarUITests/`
+
+### Test Organization
+
+- Unit tests: `PulsarTests/` directory
+- UI tests: `PulsarUITests/` directory
+- Use Swift Testing framework for unit tests
+- Use XCTest framework for UI tests
+
+### Example Test Pattern
+
+```swift
+import Testing
+
+@Suite("ActivityService Tests")
+struct ActivityServiceTests {
+    @Test("Parse GPX file successfully")
+    func testParseGPX() async throws {
+        // Test implementation
+    }
+    
+    @Test("Handle invalid file format")
+    func testInvalidFileFormat() async throws {
+        // Test implementation
+    }
+}
+```

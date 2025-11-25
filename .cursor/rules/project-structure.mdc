@@ -1,0 +1,166 @@
+---
+description: Project directory structure and important files/folders in Pulsar
+globs: **/*
+alwaysApply: false
+---
+
+# Project Structure
+
+Overview of the Pulsar project directory structure and important files.
+
+## Project Root
+
+```
+Pulsar/
+├── .cursor/                          # Cursor IDE configuration (never add to Xcode)
+│   └── rules/                        # Cursor rules files
+├── Pulsar/                           # Main iOS application source code
+├── Pulsar.xcodeproj/                 # Xcode project file
+├── PulsarTests/                      # Unit tests (Swift Testing framework)
+├── PulsarUITests/                    # UI tests (XCTest)
+├── infra/                            # Infrastructure and backend code
+│   └── supabase/                     # Supabase configuration and migrations
+├── docs/                             # Project documentation
+├── .gitignore                        # Git ignore rules
+└── README.md                         # Project overview
+```
+
+## Main Application: Pulsar/
+
+### Core App Files
+
+- **PulsarApp.swift** - Main app entry point, handles app lifecycle and configuration
+- **AppState.swift** - Global application state using `@Observable` macro
+- **ContentView.swift** - Main tab view coordinator
+
+### Source Code Organization
+
+#### App/
+App entry point and configuration:
+
+- **PulsarApp.swift** - App entry point with observability
+- **AppState.swift** - Global state (Observable pattern)
+- **Config/**
+  - **FeatureFlags.swift** - Feature flag management
+  - **Environment.swift** - Configuration (renamed to AppEnvironment)
+  - **ObservabilityManager.swift** - Analytics & crash reporting
+
+#### Features/
+Feature modules organized by domain:
+
+- **Onboarding/** - Authentication and profile creation
+  - OnboardingCoordinator.swift
+  - WelcomeView.swift
+  - SignInView.swift
+  - SignUpView.swift
+  - ProfileCreationView.swift
+- **Activities/** - Activity upload, list, and detail views
+  - ActivitiesView.swift
+  - ActivityDetailView.swift
+  - ActivityUploadView.swift
+- **Feed/** - Social feed and interactions
+  - FeedView.swift
+- **Segments/** - Segments and leaderboards (planned)
+- **Analytics/** - Dashboard and goals (planned)
+- **Routes/** - Route discovery and export (planned)
+- **Clubs/** - Clubs and challenges (planned)
+- **Privacy/** - Privacy controls (planned)
+- **Premium/** - Subscription and paywall (planned)
+
+#### Shared/
+Shared code used across features:
+
+- **Models/** - SwiftData models
+  - Activity.swift - Activity model with TrackPoint relationship
+  - Profile.swift - User profile and settings
+  - Social.swift - Social features (Follow, Kudo, Comment)
+  - TrackPoint.swift - GPS track point model
+- **Services/** - Business logic services
+  - ActivityService.swift - Activity parsing, storage, and management
+  - SocialService.swift - Social interactions (follow, kudo, comment)
+- **Networking/** - API clients
+  - SupabaseClient.swift - Supabase REST client
+  - AuthenticationService.swift - Authentication service
+- **Utilities/** - Helper utilities
+  - UnitFormatter.swift - Unit conversion utilities
+  - KeychainManager.swift - Secure keychain storage
+  - ErrorManager.swift - Centralized error handling
+- **Parsers/** - File parsers (for future use)
+- **UI/** - Shared UI components (for future use)
+
+### Assets
+
+- **Assets.xcassets/** - Image assets and app icons
+
+## Testing
+
+### Unit Tests: PulsarTests/
+- Uses Swift Testing framework
+- Test files organized by feature area
+- Examples: ActivityTests.swift, ProfileTests.swift, AuthenticationServiceTests.swift
+
+### UI Tests: PulsarUITests/
+- Uses XCTest framework
+- Test files for UI flows and interactions
+- Examples: OnboardingUITests.swift, PulsarUITests.swift
+
+## Infrastructure
+
+### Backend: infra/supabase/
+- **migrations/** - Database migration files
+- **functions/** - Edge functions (Deno/TypeScript)
+  - ingest-activity/ - Activity file ingestion
+  - match-segments/ - Segment matching
+  - leaderboard/ - Leaderboard generation
+- **config.toml** - Supabase configuration
+- **seed/** - Test data seeding
+
+## Important Files
+
+### Configuration
+- **Pulsar.xcodeproj** - Xcode project file (open this to work with the project)
+- **project.pbxproj** - Xcode project configuration (auto-generated, edit in Xcode)
+- **Package.resolved** - Swift Package Manager dependencies
+
+### Documentation
+- **README.md** - Project overview and quick start
+- **Pulsar/Documentation/** - Comprehensive project documentation
+  - **Development/** - API documentation, ERD, error tracking
+  - **Infrastructure/** - Supabase setup guides
+  - **Milestones/** - Milestone summaries and checklists
+  - **Setup/** - Getting started guides, environment setup
+
+## File Organization Guidelines
+
+1. **App/** - App entry point and global configuration
+2. **Features/** - Feature modules organized by domain (Onboarding, Activities, Feed, etc.)
+3. **Shared/Models/** - SwiftData models for persistence
+4. **Shared/Services/** - Business logic and service classes
+5. **Shared/Networking/** - API clients and networking code
+6. **Shared/Utilities/** - Helper utilities and formatters
+7. **Assets/** - All visual and media resources in Assets.xcassets
+
+## Key Patterns
+
+- **SwiftUI-First**: All new features built in SwiftUI
+- **SwiftData**: Local persistence using SwiftData models
+- **Services**: Business logic in `@MainActor` singleton services
+- **Hybrid Architecture**: Default to Views + Services, add ViewModels for complex screens
+- **Test-Driven Development**: Write tests first, then implement
+
+## Architecture
+
+Pulsar uses a **hybrid architecture**:
+
+- **Default Pattern**: SwiftUI Views + Services + SwiftData
+  - Views use `@Query` for SwiftData reactive data binding
+  - Direct service calls (ActivityService.shared, SocialService.shared)
+  - Business logic in Services, not Views
+  - Use for: simple list views, CRUD operations, views that primarily display data
+
+- **Optional Pattern**: MVVM with ViewModels
+  - ViewModels using `@Observable` macro and `DynamicProperty` protocol
+  - Centralized state management (loading, errors, derived data)
+  - Use for: complex screens with multiple data sources, heavy state management, screens requiring extensive unit testing
+
+Follow [cursor-rules.mdc](mdc:.cursor/rules/cursor-rules.mdc) for adding new files to this structure.

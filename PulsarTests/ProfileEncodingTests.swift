@@ -14,6 +14,7 @@ import Testing
 struct ProfileEncodingTests {
     
     @Test("ProfileDTO should encode dates in ISO 8601 format")
+    @MainActor
     func testDateEncodingFormat() throws {
         let profile = ProfileDTO(
             userId: "test-user",
@@ -23,6 +24,7 @@ struct ProfileEncodingTests {
             gender: "male",
             weightKg: 75.0,
             birthYear: 1990,
+            useMetricUnits: false,
             createdAt: Date(timeIntervalSince1970: 1698765432), // Known timestamp
             updatedAt: Date(timeIntervalSince1970: 1698765432)
         )
@@ -47,6 +49,7 @@ struct ProfileEncodingTests {
     
     // TODO: Fix this test - ProfileDTO dates are optional which complicates decoding
     // @Test("ProfileDTO should decode dates from ISO 8601 format")
+    @MainActor
     func _testDateDecodingFormat() throws {
         // JSON with ISO 8601 formatted dates (as PostgreSQL returns)
         let jsonString = """
@@ -79,6 +82,7 @@ struct ProfileEncodingTests {
     }
     
     @Test("ProfileDTO should fail to decode Unix timestamp dates")
+    @MainActor
     func testUnixTimestampDecodingFails() throws {
         // JSON with Unix timestamps (what was being sent before the fix)
         let jsonString = """
@@ -110,6 +114,7 @@ struct ProfileEncodingTests {
     
     // TODO: Fix this test - Date precision issues with ISO 8601
     // @Test("ProfileDTO roundtrip encoding/decoding preserves data")
+    @MainActor
     func _testEncodingDecodingRoundtrip() throws {
         let originalDate = Date()
         let original = ProfileDTO(
@@ -120,6 +125,7 @@ struct ProfileEncodingTests {
             gender: "female",
             weightKg: 65.5,
             birthYear: 1995,
+            useMetricUnits: true,
             createdAt: originalDate,
             updatedAt: originalDate
         )
@@ -157,6 +163,7 @@ struct ProfileEncodingTests {
     }
     
     @Test("JSON payload should match PostgreSQL expectations")
+    @MainActor
     func testPostgreSQLCompatibleJSON() throws {
         let profile = ProfileDTO(
             userId: "postgres-test",
@@ -166,6 +173,7 @@ struct ProfileEncodingTests {
             gender: "prefer_not_to_say",
             weightKg: nil,
             birthYear: nil,
+            useMetricUnits: false,
             createdAt: Date(),
             updatedAt: Date()
         )
@@ -193,6 +201,7 @@ struct ProfileEncodingTests {
     }
     
     @Test("Encoder without ISO 8601 strategy should produce invalid format")
+    @MainActor
     func testWrongEncoderStrategyProducesInvalidFormat() throws {
         let profile = ProfileDTO(
             userId: "test",
@@ -202,6 +211,7 @@ struct ProfileEncodingTests {
             gender: nil,
             weightKg: nil,
             birthYear: nil,
+            useMetricUnits: false,
             createdAt: Date(),
             updatedAt: Date()
         )
@@ -219,7 +229,9 @@ struct ProfileEncodingTests {
         #expect(!jsonString.contains("Z"), "Without ISO 8601, should not have 'Z' timezone")
         
         // Should contain raw numbers (Unix timestamps)
-        let containsNumber = jsonString.range(of: #"created_at":\d+"#, options: .regularExpression) != nil
+        let regex = try NSRegularExpression(pattern: #"created_at":\d+"#)
+        let range = NSRange(location: 0, length: jsonString.utf16.count)
+        let containsNumber = regex.firstMatch(in: jsonString, options: [], range: range) != nil
         #expect(containsNumber, "Should produce numeric Unix timestamps")
         
         print("⚠️ Wrong encoder produces: \(jsonString.prefix(150))")

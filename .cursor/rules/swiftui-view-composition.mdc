@@ -1,0 +1,477 @@
+---
+description: SwiftUI view composition patterns for creating reusable, testable views
+globs: **/*.swift
+alwaysApply: true
+---
+
+# SwiftUI View Composition Patterns
+
+Pulsar uses a **Root View / Content View** pattern to create maintainable, reusable, and testable SwiftUI views. This pattern is inspired by Matteo Manferdini's approach to avoiding massive views while aligning with Pulsar's hybrid architecture.
+
+## Overview
+
+Views in Pulsar are divided into two categories:
+
+1. **Root Views**: Coordinate data fetching, state management, and business logic
+2. **Content Views**: Pure UI presentation components that receive simple data types
+
+This separation promotes:
+- **Reusability**: Content views work across different contexts
+- **Testability**: Content views can be tested with simple mock data
+- **Maintainability**: Clear separation of concerns
+- **Preview-Friendly**: Content views are easy to preview in Xcode
+
+## Root Views
+
+Root views act as intermediaries between content views and the app's business logic.
+
+### Characteristics
+
+- Use `@Query` for SwiftData reactive data fetching
+- Use `@Environment` for dependency injection (ModelContext, AppState)
+- Call Services directly (ActivityService.shared, SocialService.shared)
+- Optionally use ViewModels for complex screens (3+ data sources, complex state)
+- Handle async operations and lifecycle management
+- Coordinate navigation and state
+
+### Examples from Pulsar
+
+```swift
+// Good: Root View - ActivitiesView
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    @State private var showUpload = false
+    @State private var isSyncing = false
+    
+    var body: some View {
+        NavigationStack {
+            List(activities) { activity in
+                NavigationLink {
+                    ActivityDetailViewWithLoading(activity: activity)
+                } label: {
+                    ActivityRow(activity: activity)
+                }
+            }
+            .navigationTitle("Activities")
+            .refreshable {
+                await syncActivities()
+            }
+        }
+    }
+    
+    private func syncActivities() async {
+        guard let userId = appState.currentUserId else { return }
+        try? await ActivityService.shared.syncActivitiesFromBackend(
+            for: userId, modelContext: modelContext
+        )
+    }
+}
+```
+
+**Why this is a Root View:**
+- Uses `@Query` for data fetching
+- Uses `@Environment` for dependencies
+- Calls Service for business logic
+- Manages navigation and state
+
+## Content Views
+
+Content views are pure UI presentation components that focus solely on visual layout.
+
+### Characteristics
+
+- Accept simple data types as inputs (String, Int, Double, Date, URL, Bool, etc.)
+- No `@Query` or data fetching
+- No `@Environment` except for styling (colors, fonts)
+- No Service calls or business logic
+- No ViewModels
+- Pure functions of their inputs
+- Highly reusable across different contexts
+
+### Simple Data Types
+
+Content views should accept these types:
+- **Primitives**: `String`, `Int`, `Double`, `Bool`
+- **Foundation**: `Date`, `URL`, `UUID`
+- **SwiftUI**: `Color`, `Image`, `Font`
+- **Simple structs**: Custom types with only simple properties (no SwiftData models)
+
+**Avoid in Content Views:**
+- SwiftData models (`Activity`, `Profile`, etc.)
+- Services or ViewModels
+- Complex business logic types
+
+### Examples from Pulsar
+
+#### Good: StatCard (Content View)
+
+```swift
+// Good: Content View - StatCard
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(.blue)
+            
+            Text(value)
+                .font(.title3.bold())
+            
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+```
+
+**Why this is a good Content View:**
+- Accepts only simple types (String, String, String)
+- No dependencies on Services, ViewModels, or SwiftData
+- Pure UI presentation
+- Highly reusable
+
+#### Good: DetailRow (Content View)
+
+```swift
+// Good: Content View - DetailRow
+struct DetailRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .fontWeight(.medium)
+        }
+        .font(.subheadline)
+    }
+}
+```
+
+**Why this is a good Content View:**
+- Accepts only simple types (String, String)
+- No business logic or data fetching
+- Easy to test and preview
+
+#### Needs Improvement: ActivityRow
+
+```swift
+// Current: ActivityRow (mixes root and content responsibilities)
+struct ActivityRow: View {
+    let activity: Activity  // ❌ Receives SwiftData model
+    @Environment(\.modelContext) private var modelContext  // ❌ Uses @Environment
+    @Environment(AppState.self) private var appState  // ❌ Uses @Environment
+    @State private var useMetric: Bool = false
+    
+    // ... implementation fetches Profile data
+}
+```
+
+**Issues:**
+- Receives SwiftData model directly
+- Uses `@Environment` for data fetching
+- Fetches Profile data in `onAppear`
+- Harder to test and preview
+
+**Better Approach:**
+- Extract UI into `ActivityRowContent` (content view) that takes simple types
+- Root view (ActivityRow) fetches data and passes to content view
+
+## View Decomposition Guidelines
+
+### When to Decompose
+
+**Decompose views when:**
+- View exceeds 200 lines
+- View mixes multiple responsibilities (UI, data fetching, business logic)
+- View is hard to test or preview
+- Sections can be extracted into reusable content views
+
+### Decomposition Pattern
+
+1. **Identify sections** in the massive view (header, stats, map, etc.)
+2. **Extract sections** into content views that take simple data types
+3. **Root view coordinates** by fetching data and passing to content views
+4. **Keep root view focused** on coordination, not UI details
+
+### Example: Decomposing ActivityDetailView
+
+**Current State (Massive View):**
+- 537 lines
+- Mixes UI layout, data fetching (@Query), business logic (recalculation)
+- Hard to test and preview
+
+**Recommended Decomposition:**
+
+```swift
+// Root View: ActivityDetailView (coordinates)
+struct ActivityDetailView: View {
+    let activity: Activity
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    @Query private var profiles: [Profile]
+    @State private var useMetric: Bool = false
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Extract header → ActivityHeaderView (content view)
+                ActivityHeaderView(
+                    icon: activity.activityType.icon,
+                    name: activity.name,
+                    date: activity.startDate
+                )
+                
+                // Extract map → ActivityMapSectionView (content view)
+                if let trackPoints = activity.trackPoints, !trackPoints.isEmpty {
+                    ActivityMapSectionView(
+                        trackPoints: trackPoints,
+                        onTap: { /* handle tap */ }
+                    )
+                }
+                
+                // Extract stats → ActivityStatsView (content view)
+                ActivityStatsView(
+                    distance: activity.distance,
+                    duration: activity.duration,
+                    elevationGain: activity.elevationGain,
+                    useMetric: useMetric
+                )
+            }
+        }
+        .task {
+            // Fetch profile for unit preferences
+            if let profile = profiles.first(where: { $0.userId == activity.userId }) {
+                useMetric = profile.useMetricUnits
+            }
+        }
+    }
+}
+
+// Content View: ActivityHeaderView
+struct ActivityHeaderView: View {
+    let icon: String
+    let name: String
+    let date: Date
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 50))
+                .foregroundStyle(.blue)
+            
+            Text(name)
+                .font(.title.bold())
+            
+            Text(date.formatted(date: .long, time: .shortened))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.top, 20)
+    }
+}
+
+// Content View: ActivityStatsView
+struct ActivityStatsView: View {
+    let distance: Double
+    let duration: Double
+    let elevationGain: Double?
+    let useMetric: Bool
+    
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+            StatCard(
+                title: "Distance",
+                value: UnitFormatter.shared.formatDistance(distance, useMetric: useMetric),
+                icon: "location.fill"
+            )
+            StatCard(
+                title: "Duration",
+                value: UnitFormatter.shared.formatDuration(duration),
+                icon: "clock.fill"
+            )
+            // ... more stats
+        }
+    }
+}
+```
+
+**Benefits:**
+- Root view is focused on coordination
+- Content views are reusable and testable
+- Each view has a single responsibility
+- Easy to preview content views independently
+
+## Rules for Content Views
+
+### ✅ DO
+
+- Accept simple data types (String, Int, Double, Date, URL, Bool)
+- Use `@Environment(\.colorScheme)` or `@Environment(\.dynamicTypeSize)` for styling
+- Keep views small and focused (< 100 lines)
+- Make views pure functions of their inputs
+- Add `#Preview` blocks for easy testing
+
+### ❌ DON'T
+
+- Accept SwiftData models directly
+- Use `@Query` or `@Environment(\.modelContext)`
+- Call Services or ViewModels
+- Fetch data in `onAppear` or `task`
+- Mix business logic with UI
+
+## Rules for Root Views
+
+### ✅ DO
+
+- Use `@Query` for SwiftData reactive data fetching
+- Use `@Environment` for dependency injection
+- Call Services for business logic
+- Optionally use ViewModels for complex screens
+- Coordinate data fetching and pass to content views
+- Keep focused on coordination, not UI details
+
+### ❌ DON'T
+
+- Mix extensive UI layout with data fetching
+- Create views over 200 lines without decomposition
+- Put business logic directly in views (use Services)
+- Pass SwiftData models directly to content views
+
+## Preview Patterns
+
+Content views should be easy to preview:
+
+```swift
+// Good: Content view with preview
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    
+    var body: some View {
+        // ... implementation
+    }
+}
+
+#Preview {
+    StatCard(
+        title: "Distance",
+        value: "5.2 mi",
+        icon: "location.fill"
+    )
+    .padding()
+}
+```
+
+**Benefits:**
+- No app setup required
+- No network calls
+- No SwiftData models needed
+- Fast preview rendering
+
+## Integration with Pulsar's Hybrid Architecture
+
+### Root Views and Services
+
+Root views can use Services directly (default pattern):
+
+```swift
+// Root View using Services (default pattern)
+struct ActivitiesView: View {
+    @Query private var activities: [Activity]
+    @Environment(\.modelContext) private var modelContext
+    
+    private func syncActivities() async {
+        try? await ActivityService.shared.syncActivitiesFromBackend(
+            for: userId, modelContext: modelContext
+        )
+    }
+}
+```
+
+### Root Views and ViewModels
+
+Root views can use ViewModels for complex screens (optional pattern):
+
+```swift
+// Root View using ViewModel (optional pattern for complex screens)
+struct ActivityDetailView: View {
+    @State private var viewModel: ActivityDetailViewModel
+    let activity: Activity
+    
+    var body: some View {
+        ScrollView {
+            // Pass simple data to content views
+            ActivityHeaderView(
+                icon: activity.activityType.icon,
+                name: activity.name,
+                date: activity.startDate
+            )
+        }
+    }
+}
+```
+
+### Content Views Never Use ViewModels
+
+Content views should never use ViewModels - they only receive simple data:
+
+```swift
+// ❌ Bad: Content view using ViewModel
+struct ActivityHeaderView: View {
+    @State private var viewModel: ActivityHeaderViewModel  // ❌ Don't do this
+    
+    var body: some View {
+        // ...
+    }
+}
+
+// ✅ Good: Content view with simple data
+struct ActivityHeaderView: View {
+    let icon: String
+    let name: String
+    let date: Date
+    
+    var body: some View {
+        // ...
+    }
+}
+```
+
+## Summary
+
+1. **Root Views**: Handle data fetching, state management, business logic
+   - Use `@Query`, `@Environment`, Services
+   - Optionally use ViewModels for complex screens
+   - Coordinate and pass data to content views
+
+2. **Content Views**: Pure UI presentation
+   - Accept simple data types only
+   - No dependencies on Services, ViewModels, or SwiftData
+   - Highly reusable and testable
+
+3. **Decomposition**: Break down views over 200 lines
+   - Extract sections into content views
+   - Keep root views focused on coordination
+
+4. **Alignment**: This pattern aligns with Pulsar's hybrid architecture
+   - Root views can use Services directly (default)
+   - Root views can use ViewModels when complexity justifies it (optional)
+   - Content views never use ViewModels
+
+Follow [ui-architecture-patterns.mdc](mdc:.cursor/rules/ui-architecture-patterns.mdc) for more details on Pulsar's architecture.

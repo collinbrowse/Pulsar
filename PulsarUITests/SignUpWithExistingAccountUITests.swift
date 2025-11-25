@@ -10,6 +10,7 @@ import XCTest
 /// UI Test for graceful handling of "user already exists" error
 /// This test validates that attempting to sign up with an existing account
 /// automatically signs the user in instead of showing an error.
+@MainActor
 final class SignUpWithExistingAccountUITests: XCTestCase {
     
     var app: XCUIApplication!

@@ -22,16 +22,16 @@ final class SocialService: Sendable {
     
     /// Follow a user
     func followUser(
-        followerID: String,
-        followingID: String,
+        followerId: String,
+        followingId: String,
         modelContext: ModelContext
     ) async throws {
-        logger.info("👥 Following user: \(followingID)")
+        logger.info("👥 Following user: \(followingId)")
         
         // Check if already following
         let descriptor = FetchDescriptor<Follow>(
             predicate: #Predicate { follow in
-                follow.followerID == followerID && follow.followingID == followingID
+                follow.followerId == followerId && follow.followingId == followingId
             }
         )
         
@@ -42,7 +42,7 @@ final class SocialService: Sendable {
         }
         
         // Create follow relationship
-        let follow = Follow(followerID: followerID, followingID: followingID)
+        let follow = Follow(followerId: followerId, followingId: followingId)
         modelContext.insert(follow)
         try modelContext.save()
         
@@ -51,7 +51,7 @@ final class SocialService: Sendable {
         // try await supabaseClient.insert("follows", data: dto)
         
         ObservabilityManager.shared.track(event: "user_followed", properties: [
-            "following_id": followingID
+            "following_id": followingId
         ])
         
         logger.info("✅ Successfully followed user")
@@ -59,15 +59,15 @@ final class SocialService: Sendable {
     
     /// Unfollow a user
     func unfollowUser(
-        followerID: String,
-        followingID: String,
+        followerId: String,
+        followingId: String,
         modelContext: ModelContext
     ) async throws {
-        logger.info("👥 Unfollowing user: \(followingID)")
+        logger.info("👥 Unfollowing user: \(followingId)")
         
         let descriptor = FetchDescriptor<Follow>(
             predicate: #Predicate { follow in
-                follow.followerID == followerID && follow.followingID == followingID
+                follow.followerId == followerId && follow.followingId == followingId
             }
         )
         
@@ -80,7 +80,7 @@ final class SocialService: Sendable {
         // TODO: Sync to backend
         
         ObservabilityManager.shared.track(event: "user_unfollowed", properties: [
-            "following_id": followingID
+            "following_id": followingId
         ])
         
         logger.info("✅ Successfully unfollowed user")
@@ -88,13 +88,13 @@ final class SocialService: Sendable {
     
     /// Check if user is following another user
     func isFollowing(
-        followerID: String,
-        followingID: String,
+        followerId: String,
+        followingId: String,
         modelContext: ModelContext
     ) throws -> Bool {
         let descriptor = FetchDescriptor<Follow>(
             predicate: #Predicate { follow in
-                follow.followerID == followerID && follow.followingID == followingID
+                follow.followerId == followerId && follow.followingId == followingId
             }
         )
         
@@ -104,12 +104,12 @@ final class SocialService: Sendable {
     
     /// Get follower count for a user
     func getFollowerCount(
-        userID: String,
+        userId: String,
         modelContext: ModelContext
     ) throws -> Int {
         let descriptor = FetchDescriptor<Follow>(
             predicate: #Predicate { follow in
-                follow.followingID == userID
+                follow.followingId == userId
             }
         )
         
@@ -118,12 +118,12 @@ final class SocialService: Sendable {
     
     /// Get following count for a user
     func getFollowingCount(
-        userID: String,
+        userId: String,
         modelContext: ModelContext
     ) throws -> Int {
         let descriptor = FetchDescriptor<Follow>(
             predicate: #Predicate { follow in
-                follow.followerID == userID
+                follow.followerId == userId
             }
         )
         
@@ -134,16 +134,16 @@ final class SocialService: Sendable {
     
     /// Give a kudo to an activity
     func giveKudo(
-        userID: String,
-        activityID: String,
+        userId: String,
+        activityId: String,
         modelContext: ModelContext
     ) async throws {
-        logger.info("❤️ Giving kudo to activity: \(activityID)")
+        logger.info("❤️ Giving kudo to activity: \(activityId)")
         
         // Check if already kudoed
         let descriptor = FetchDescriptor<Kudo>(
             predicate: #Predicate { kudo in
-                kudo.userID == userID && kudo.activityID == activityID
+                kudo.userId == userId && kudo.activityId == activityId
             }
         )
         
@@ -154,14 +154,14 @@ final class SocialService: Sendable {
         }
         
         // Create kudo
-        let kudo = Kudo(userID: userID, activityID: activityID)
+        let kudo = Kudo(userId: userId, activityId: activityId)
         modelContext.insert(kudo)
         try modelContext.save()
         
         // TODO: Sync to backend
         
         ObservabilityManager.shared.track(event: "kudo_given", properties: [
-            "activity_id": activityID
+            "activity_id": activityId
         ])
         
         logger.info("✅ Kudo given successfully")
@@ -169,15 +169,15 @@ final class SocialService: Sendable {
     
     /// Remove a kudo from an activity
     func removeKudo(
-        userID: String,
-        activityID: String,
+        userId: String,
+        activityId: String,
         modelContext: ModelContext
     ) async throws {
-        logger.info("❤️ Removing kudo from activity: \(activityID)")
+        logger.info("❤️ Removing kudo from activity: \(activityId)")
         
         let descriptor = FetchDescriptor<Kudo>(
             predicate: #Predicate { kudo in
-                kudo.userID == userID && kudo.activityID == activityID
+                kudo.userId == userId && kudo.activityId == activityId
             }
         )
         
@@ -194,12 +194,12 @@ final class SocialService: Sendable {
     
     /// Get kudo count for an activity
     func getKudoCount(
-        activityID: String,
+        activityId: String,
         modelContext: ModelContext
     ) throws -> Int {
         let descriptor = FetchDescriptor<Kudo>(
             predicate: #Predicate { kudo in
-                kudo.activityID == activityID
+                kudo.activityId == activityId
             }
         )
         
@@ -208,13 +208,13 @@ final class SocialService: Sendable {
     
     /// Check if user has kudoed an activity
     func hasKudoed(
-        userID: String,
-        activityID: String,
+        userId: String,
+        activityId: String,
         modelContext: ModelContext
     ) throws -> Bool {
         let descriptor = FetchDescriptor<Kudo>(
             predicate: #Predicate { kudo in
-                kudo.userID == userID && kudo.activityID == activityID
+                kudo.userId == userId && kudo.activityId == activityId
             }
         )
         
@@ -226,26 +226,26 @@ final class SocialService: Sendable {
     
     /// Add a comment to an activity
     func addComment(
-        userID: String,
-        activityID: String,
+        userId: String,
+        activityId: String,
         text: String,
         modelContext: ModelContext
     ) async throws {
-        logger.info("💬 Adding comment to activity: \(activityID)")
+        logger.info("💬 Adding comment to activity: \(activityId)")
         
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw SocialServiceError.emptyComment
         }
         
         // Create comment
-        let comment = Comment(userID: userID, activityID: activityID, text: text)
+        let comment = Comment(userId: userId, activityId: activityId, text: text)
         modelContext.insert(comment)
         try modelContext.save()
         
         // TODO: Sync to backend
         
         ObservabilityManager.shared.track(event: "comment_added", properties: [
-            "activity_id": activityID,
+            "activity_id": activityId,
             "comment_length": text.count
         ])
         
@@ -254,12 +254,12 @@ final class SocialService: Sendable {
     
     /// Get comments for an activity
     func getComments(
-        activityID: String,
+        activityId: String,
         modelContext: ModelContext
     ) throws -> [Comment] {
         let descriptor = FetchDescriptor<Comment>(
             predicate: #Predicate { comment in
-                comment.activityID == activityID
+                comment.activityId == activityId
             },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
@@ -270,14 +270,14 @@ final class SocialService: Sendable {
     /// Delete a comment
     func deleteComment(
         commentID: String,
-        userID: String,
+        userId: String,
         modelContext: ModelContext
     ) async throws {
         logger.info("🗑️ Deleting comment: \(commentID)")
         
         let descriptor = FetchDescriptor<Comment>(
             predicate: #Predicate { comment in
-                comment.id == commentID && comment.userID == userID
+                comment.id == commentID && comment.userId == userId
             }
         )
         
@@ -298,23 +298,23 @@ final class SocialService: Sendable {
     
     /// Get feed items for a user (activities from followed users)
     func getFeed(
-        userID: String,
+        userId: String,
         modelContext: ModelContext
     ) throws -> [FeedItem] {
         // Get list of users the current user follows
         let followDescriptor = FetchDescriptor<Follow>(
             predicate: #Predicate { follow in
-                follow.followerID == userID
+                follow.followerId == userId
             }
         )
         
         let follows = try modelContext.fetch(followDescriptor)
-        let followingIDs = follows.map { $0.followingID }
+        let followingIds = follows.map { $0.followingId }
         
         // Get activities from followed users
         let activityDescriptor = FetchDescriptor<Activity>(
             predicate: #Predicate { activity in
-                followingIDs.contains(activity.userID) && !activity.isPrivate
+                followingIds.contains(activity.userId) && !activity.isPrivate
             },
             sortBy: [SortDescriptor(\.startDate, order: .reverse)]
         )
@@ -326,14 +326,14 @@ final class SocialService: Sendable {
         for activity in activities.prefix(50) { // Limit to 50 items
             // TODO: Fetch actual profile from database
             let profile = Profile(
-                userID: activity.userID,
-                username: "athlete\(activity.userID.prefix(8))",
+                userId: activity.userId,
+                username: "athlete\(activity.userId.prefix(8))",
                 email: "athlete@example.com"
             )
             
-            let kudosCount = try getKudoCount(activityID: activity.id, modelContext: modelContext)
-            let hasUserKudoed = try hasKudoed(userID: userID, activityID: activity.id, modelContext: modelContext)
-            let comments = try getComments(activityID: activity.id, modelContext: modelContext)
+            let kudosCount = try getKudoCount(activityId: activity.id, modelContext: modelContext)
+            let hasUserKudoed = try hasKudoed(userId: userId, activityId: activity.id, modelContext: modelContext)
+            let comments = try getComments(activityId: activity.id, modelContext: modelContext)
             
             let feedItem = FeedItem(
                 id: activity.id,

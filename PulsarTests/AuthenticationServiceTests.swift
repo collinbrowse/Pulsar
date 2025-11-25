@@ -26,7 +26,7 @@ struct AuthenticationServiceTests {
         let service = AuthenticationService.shared
         
         #expect(service.isAuthenticated == false)
-        #expect(service.currentUserID == nil)
+        #expect(service.currentUserId == nil)
         #expect(service.accessToken == nil)
     }
     
@@ -134,7 +134,7 @@ struct AuthenticationServiceTests {
         service.signOut()
         
         #expect(service.isAuthenticated == false)
-        #expect(service.currentUserID == nil)
+        #expect(service.currentUserId == nil)
     }
     
     @Test("Auth error should have descriptive messages")

@@ -22,8 +22,8 @@ struct OnboardingCoordinator: View {
                         SignInView(path: $path)
                     case .signUp:
                         SignUpView(path: $path)
-                    case .profileCreation(let userID, let email, let username):
-                        ProfileCreationView(userID: userID, email: email, username: username, path: $path)
+                    case .profileCreation(let userId, let email, let username):
+                        ProfileCreationView(userId: userId, email: email, username: username, path: $path)
                     }
                 }
         }

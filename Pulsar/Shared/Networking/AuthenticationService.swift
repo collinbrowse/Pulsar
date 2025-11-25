@@ -17,9 +17,15 @@ final class AuthenticationService: Sendable {
     static let shared = AuthenticationService()
     
     private let supabaseClient = SupabaseClient.shared
+    private let keychain = KeychainManager.shared
     private var currentSession: Session?
     
-    private init() {}
+    private let sessionKey = "auth_session"
+    
+    private init() {
+        // Try to restore session from Keychain on initialization
+        restoreSession()
+    }
     
     // MARK: - Authentication State
     
@@ -27,12 +33,62 @@ final class AuthenticationService: Sendable {
         currentSession != nil
     }
     
-    var currentUserID: String? {
+    var currentUserId: String? {
         currentSession?.userId
     }
     
     var accessToken: String? {
         currentSession?.accessToken
+    }
+    
+    /// Refresh the access token if it's expired or about to expire
+    func refreshTokenIfNeeded() async throws {
+        guard let session = currentSession else {
+            throw AuthError.notAuthenticated
+        }
+        
+        // Check if token is expired or will expire soon
+        guard session.isExpired else {
+            logger.debug("Token is still valid, no refresh needed")
+            return
+        }
+        
+        logger.info("🔄 Token expired or expiring soon, refreshing...")
+        
+        do {
+            let newSession = try await supabaseClient.refreshToken(refreshToken: session.refreshToken)
+            
+            // Update session in memory and Keychain
+            currentSession = newSession
+            try saveSession(newSession)
+            
+            logger.info("✅ Token refreshed successfully")
+        } catch {
+            logger.error("❌ Failed to refresh token: \(error.localizedDescription)")
+            // If refresh fails, clear session and require re-authentication
+            signOut()
+            throw AuthError.notAuthenticated
+        }
+    }
+    
+    /// Get a valid access token, refreshing if necessary
+    func getValidAccessToken() async throws -> String {
+        // Ensure session is restored from Keychain first
+        if currentSession == nil {
+            restoreSession()
+        }
+        
+        guard let session = currentSession else {
+            logger.error("❌ No session found when trying to get access token")
+            throw AuthError.notAuthenticated
+        }
+        
+        try await refreshTokenIfNeeded()
+        guard let token = accessToken else {
+            logger.error("❌ Access token is nil after refresh")
+            throw AuthError.notAuthenticated
+        }
+        return token
     }
     
     // MARK: - Sign Up
@@ -84,8 +140,9 @@ final class AuthenticationService: Sendable {
         // Sign in with Supabase
         let session = try await supabaseClient.signIn(email: email, password: password)
         
-        // Store session
+        // Store session in memory and Keychain
         currentSession = session
+        try saveSession(session)
         
         logger.info("User signed in successfully: \(session.userId)")
         
@@ -105,32 +162,83 @@ final class AuthenticationService: Sendable {
     func signOut() {
         logger.info("Signing out user")
         currentSession = nil
+        keychain.delete(key: sessionKey)
         
         ObservabilityManager.shared.track(event: "user_signed_out")
     }
     
+    // MARK: - Session Persistence
+    
+    private func saveSession(_ session: Session) throws {
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(session)
+        let jsonString = String(data: data, encoding: .utf8) ?? ""
+        try keychain.save(key: sessionKey, value: jsonString)
+        logger.info("Session saved to Keychain")
+    }
+    
+    private func restoreSession() {
+        do {
+            guard let jsonString = try keychain.load(key: sessionKey),
+                  let data = jsonString.data(using: .utf8) else {
+                logger.info("No saved session found in Keychain")
+                currentSession = nil
+                return
+            }
+            
+            let decoder = JSONDecoder()
+            let session = try decoder.decode(Session.self, from: data)
+            
+            // Verify session is still valid by checking token expiration
+            // For now, we'll restore it and let API calls fail if expired
+            currentSession = session
+            logger.info("✅ Session restored from Keychain: \(session.userId)")
+        } catch {
+            logger.warning("❌ Failed to restore session from Keychain: \(error.localizedDescription)")
+            // Clear invalid session
+            currentSession = nil
+            keychain.delete(key: sessionKey)
+        }
+    }
+    
+    /// Restore session and update app state (called on app launch)
+    func restoreSessionIfNeeded(appState: AppState) {
+        // Ensure session is restored from Keychain first
+        restoreSession()
+        
+        if let session = currentSession {
+            appState.isAuthenticated = true
+            appState.currentUserId = session.userId
+            logger.info("Session restored, user authenticated: \(session.userId)")
+        } else {
+            appState.isAuthenticated = false
+            appState.currentUserId = nil
+            logger.info("No session found, user not authenticated")
+        }
+    }
+    
     // MARK: - Profile Management
     
-    func fetchProfiles(userID: String) async throws -> [ProfileDTO] {
-        logger.info("Fetching profiles for user: \(userID)")
+    func fetchProfiles(userId: String) async throws -> [ProfileDTO] {
+        logger.info("Fetching profiles for user: \(userId)")
         
-        guard let token = accessToken else {
-            throw AuthError.notAuthenticated
-        }
+        // Get valid access token, refreshing if necessary
+        let token = try await getValidAccessToken()
         
         let profiles: [ProfileDTO] = try await supabaseClient.fetch(
             from: "profiles",
-            filter: ["user_id": userID],
-            accessToken: token
+            filter: ["user_id": userId],
+            accessToken: token,
+            schema: "public"
         )
         
         return profiles
     }
     
-    func fetchProfile(userID: String) async throws -> ProfileDTO {
-        logger.info("Fetching profile for user: \(userID)")
+    func fetchProfile(userId: String) async throws -> ProfileDTO {
+        logger.info("Fetching profile for user: \(userId)")
         
-        let profiles = try await fetchProfiles(userID: userID)
+        let profiles = try await fetchProfiles(userId: userId)
         
         guard let profile = profiles.first else {
             throw AuthError.profileNotFound
@@ -142,15 +250,15 @@ final class AuthenticationService: Sendable {
     func updateProfile(_ profile: ProfileDTO) async throws {
         logger.info("Upserting profile for user: \(profile.userId)")
         
-        guard let token = accessToken else {
-            throw AuthError.notAuthenticated
-        }
+        // Get valid access token, refreshing if necessary
+        let token = try await getValidAccessToken()
         
         // Upsert profile (create if not exists, update if exists)
         try await supabaseClient.upsert(
             table: "profiles",
             data: profile,
-            accessToken: token
+            accessToken: token,
+            schema: "public"
         )
         
         logger.info("Profile upserted successfully")

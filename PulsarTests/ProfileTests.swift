@@ -11,17 +11,18 @@ import SwiftData
 @testable import Pulsar
 
 @Suite("Profile Model Tests")
+@MainActor
 struct ProfileTests {
     
     @Test("Profile should initialize with required fields")
     func testProfileInitialization() {
         let profile = Profile(
-            userID: "test-user-id",
+            userId: "test-user-id",
             username: "testuser",
             email: "test@example.com"
         )
         
-        #expect(profile.userID == "test-user-id")
+        #expect(profile.userId == "test-user-id")
         #expect(profile.username == "testuser")
         #expect(profile.email == "test@example.com")
         #expect(profile.fullName == nil)
@@ -31,7 +32,7 @@ struct ProfileTests {
     @Test("Profile should support optional fields")
     func testProfileOptionalFields() {
         let profile = Profile(
-            userID: "test-user-id",
+            userId: "test-user-id",
             username: "testuser",
             email: "test@example.com",
             fullName: "Test User",
@@ -49,7 +50,7 @@ struct ProfileTests {
     @Test("Profile should convert to DTO correctly")
     func testProfileToDTO() {
         let profile = Profile(
-            userID: "test-user-id",
+            userId: "test-user-id",
             username: "testuser",
             email: "test@example.com",
             fullName: "Test User",
@@ -78,13 +79,14 @@ struct ProfileTests {
             gender: "male",
             weightKg: 75.5,
             birthYear: 1988,
+            useMetricUnits: false,
             createdAt: Date(),
             updatedAt: Date()
         )
         
         let profile = Profile.fromDTO(dto, email: "test@example.com")
         
-        #expect(profile.userID == "test-user-id")
+        #expect(profile.userId == "test-user-id")
         #expect(profile.username == "testuser")
         #expect(profile.email == "test@example.com")
         #expect(profile.fullName == "Test User")

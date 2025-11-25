@@ -195,7 +195,7 @@ struct SignUpView: View {
         
         Task {
             do {
-                let user = try await authService.signUp(
+                _ = try await authService.signUp(
                     email: email,
                     password: password,
                     username: username,
@@ -208,7 +208,7 @@ struct SignUpView: View {
                 // Navigate to profile creation
                 await MainActor.run {
                     path.append(OnboardingDestination.profileCreation(
-                        userID: session.userId,
+                        userId: session.userId,
                         email: email,
                         username: username
                     ))
@@ -241,20 +241,20 @@ struct SignUpView: View {
             let session = try await authService.signIn(email: email, password: password)
             
             // Check if profile exists
-            let profiles: [ProfileDTO] = try await authService.fetchProfiles(userID: session.userId)
+            let profiles: [ProfileDTO] = try await authService.fetchProfiles(userId: session.userId)
             
             await MainActor.run {
-                if let existingProfile = profiles.first {
+                if profiles.first != nil {
                     // User has complete profile - go to main app
                     print("✅ Existing user signed in successfully - navigating to main app")
                     appState.isAuthenticated = true
-                    appState.currentUserID = session.userId
+                    appState.currentUserId = session.userId
                     path = NavigationPath() // Clear navigation stack
                 } else {
                     // User exists but no profile - navigate to profile creation
                     print("ℹ️ Existing user needs to complete profile")
                     path.append(OnboardingDestination.profileCreation(
-                        userID: session.userId,
+                        userId: session.userId,
                         email: email,
                         username: username
                     ))

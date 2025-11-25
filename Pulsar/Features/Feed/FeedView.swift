@@ -63,12 +63,12 @@ struct FeedView: View {
     }
     
     private func loadFeed() async {
-        guard let userID = appState.currentUserID else { return }
+        guard let userId = appState.currentUserId else { return }
         
         isLoading = true
         
         do {
-            feedItems = try socialService.getFeed(userID: userID, modelContext: modelContext)
+            feedItems = try socialService.getFeed(userId: userId, modelContext: modelContext)
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -169,7 +169,7 @@ struct FeedCard: View {
             
             // Comments preview
             if showComments {
-                CommentSection(activityID: item.activity.id)
+                CommentSection(activityId: item.activity.id)
             }
         }
         .padding()
@@ -179,14 +179,14 @@ struct FeedCard: View {
     }
     
     private func toggleKudo() {
-        guard let userID = appState.currentUserID else { return }
+        guard let userId = appState.currentUserId else { return }
         
         Task {
             do {
                 if hasKudoed {
                     try await socialService.removeKudo(
-                        userID: userID,
-                        activityID: item.activity.id,
+                        userId: userId,
+                        activityId: item.activity.id,
                         modelContext: modelContext
                     )
                     await MainActor.run {
@@ -195,8 +195,8 @@ struct FeedCard: View {
                     }
                 } else {
                     try await socialService.giveKudo(
-                        userID: userID,
-                        activityID: item.activity.id,
+                        userId: userId,
+                        activityId: item.activity.id,
                         modelContext: modelContext
                     )
                     await MainActor.run {
@@ -237,7 +237,7 @@ struct CommentSection: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
     
-    let activityID: String
+    let activityId: String
     
     @State private var comments: [Comment] = []
     @State private var newCommentText = ""
@@ -273,20 +273,20 @@ struct CommentSection: View {
     
     private func loadComments() {
         do {
-            comments = try socialService.getComments(activityID: activityID, modelContext: modelContext)
+            comments = try socialService.getComments(activityId: activityId, modelContext: modelContext)
         } catch {
             print("Error loading comments: \(error)")
         }
     }
     
     private func postComment() {
-        guard let userID = appState.currentUserID else { return }
+        guard let userId = appState.currentUserId else { return }
         
         Task {
             do {
                 try await socialService.addComment(
-                    userID: userID,
-                    activityID: activityID,
+                    userId: userId,
+                    activityId: activityId,
                     text: newCommentText,
                     modelContext: modelContext
                 )
@@ -316,7 +316,7 @@ struct CommentRow: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("@user\(comment.userID.prefix(8))")
+                    Text("@user\(comment.userId.prefix(8))")
                         .font(.caption.bold())
                     Text(comment.createdAt, style: .relative)
                         .font(.caption2)

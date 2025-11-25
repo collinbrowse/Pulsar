@@ -14,18 +14,18 @@ import SwiftData
 @Model
 final class Follow {
     @Attribute(.unique) var id: String
-    var followerID: String // User who is following
-    var followingID: String // User being followed
+    var followerId: String // User who is following
+    var followingId: String // User being followed
     var createdAt: Date
     
     init(
         id: String = UUID().uuidString,
-        followerID: String,
-        followingID: String
+        followerId: String,
+        followingId: String
     ) {
         self.id = id
-        self.followerID = followerID
-        self.followingID = followingID
+        self.followerId = followerId
+        self.followingId = followingId
         self.createdAt = Date()
     }
 }
@@ -36,18 +36,18 @@ final class Follow {
 @Model
 final class Kudo {
     @Attribute(.unique) var id: String
-    var userID: String // User who gave the kudo
-    var activityID: String // Activity that received the kudo
+    var userId: String // User who gave the kudo
+    var activityId: String // Activity that received the kudo
     var createdAt: Date
     
     init(
         id: String = UUID().uuidString,
-        userID: String,
-        activityID: String
+        userId: String,
+        activityId: String
     ) {
         self.id = id
-        self.userID = userID
-        self.activityID = activityID
+        self.userId = userId
+        self.activityId = activityId
         self.createdAt = Date()
     }
 }
@@ -58,21 +58,21 @@ final class Kudo {
 @Model
 final class Comment {
     @Attribute(.unique) var id: String
-    var userID: String // User who wrote the comment
-    var activityID: String // Activity being commented on
+    var userId: String // User who wrote the comment
+    var activityId: String // Activity being commented on
     var text: String
     var createdAt: Date
     var updatedAt: Date
     
     init(
         id: String = UUID().uuidString,
-        userID: String,
-        activityID: String,
+        userId: String,
+        activityId: String,
         text: String
     ) {
         self.id = id
-        self.userID = userID
-        self.activityID = activityID
+        self.userId = userId
+        self.activityId = activityId
         self.text = text
         self.createdAt = Date()
         self.updatedAt = Date()
@@ -168,8 +168,8 @@ extension Follow {
     func toDTO() -> FollowDTO {
         FollowDTO(
             id: id,
-            followerId: followerID,
-            followingId: followingID,
+            followerId: followerId,
+            followingId: followingId,
             createdAt: createdAt
         )
     }
@@ -177,8 +177,8 @@ extension Follow {
     static func fromDTO(_ dto: FollowDTO) -> Follow {
         Follow(
             id: dto.id,
-            followerID: dto.followerId,
-            followingID: dto.followingId
+            followerId: dto.followerId,
+            followingId: dto.followingId
         )
     }
 }
@@ -187,8 +187,8 @@ extension Kudo {
     func toDTO() -> KudoDTO {
         KudoDTO(
             id: id,
-            userId: userID,
-            activityId: activityID,
+            userId: userId,
+            activityId: activityId,
             createdAt: createdAt
         )
     }
@@ -196,8 +196,8 @@ extension Kudo {
     static func fromDTO(_ dto: KudoDTO) -> Kudo {
         Kudo(
             id: dto.id,
-            userID: dto.userId,
-            activityID: dto.activityId
+            userId: dto.userId,
+            activityId: dto.activityId
         )
     }
 }
@@ -206,8 +206,8 @@ extension Comment {
     func toDTO() -> CommentDTO {
         CommentDTO(
             id: id,
-            userId: userID,
-            activityId: activityID,
+            userId: userId,
+            activityId: activityId,
             text: text,
             createdAt: createdAt,
             updatedAt: updatedAt
@@ -217,8 +217,8 @@ extension Comment {
     static func fromDTO(_ dto: CommentDTO) -> Comment {
         Comment(
             id: dto.id,
-            userID: dto.userId,
-            activityID: dto.activityId,
+            userId: dto.userId,
+            activityId: dto.activityId,
             text: dto.text
         )
     }

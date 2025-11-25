@@ -61,7 +61,7 @@ enum AppError: Error {
             return message
             
         // Generic
-        case .unknown(let message):
+        case .unknown(_):
             return "Something went wrong. Please try again."
         }
     }

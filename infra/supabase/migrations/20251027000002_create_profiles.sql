@@ -19,13 +19,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- Indexes
-CREATE INDEX idx_profiles_username ON public.profiles(username);
-CREATE INDEX idx_profiles_created_at ON public.profiles(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
+CREATE INDEX IF NOT EXISTS idx_profiles_created_at ON public.profiles(created_at DESC);
 
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+
 -- Anyone can view profiles (public data)
 CREATE POLICY "Profiles are viewable by everyone" 
     ON public.profiles FOR SELECT 
@@ -51,6 +56,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at 
     BEFORE UPDATE ON public.profiles 
     FOR EACH ROW 
@@ -71,9 +77,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to create profile on signup
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created 
+    AFTER INSERT ON auth.users 
+    FOR EACH ROW 
     EXECUTE FUNCTION public.handle_new_user();
 
 -- Comments

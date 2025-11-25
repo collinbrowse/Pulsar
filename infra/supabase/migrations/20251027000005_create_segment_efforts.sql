@@ -2,11 +2,11 @@
 -- Created: 2025-10-27
 -- Description: Individual efforts on segments for leaderboards
 
-CREATE TABLE IF NOT EXISTS app.segment_efforts (
+CREATE TABLE IF NOT EXISTS public.segment_efforts (
     effort_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    segment_id UUID NOT NULL REFERENCES app.segments(segment_id) ON DELETE CASCADE,
-    activity_id UUID NOT NULL REFERENCES app.activities(activity_id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES app.profiles(user_id) ON DELETE CASCADE,
+    segment_id UUID NOT NULL REFERENCES public.segments(segment_id) ON DELETE CASCADE,
+    activity_id UUID NOT NULL REFERENCES public.activities(activity_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
     
     -- Effort stats
     elapsed_time_sec INTEGER NOT NULL CHECK (elapsed_time_sec > 0),
@@ -41,37 +41,39 @@ CREATE TABLE IF NOT EXISTS app.segment_efforts (
 );
 
 -- Indexes for leaderboards (critical for performance)
-CREATE INDEX idx_segment_efforts_segment_time ON app.segment_efforts(segment_id, elapsed_time_sec ASC);
-CREATE INDEX idx_segment_efforts_user_segment ON app.segment_efforts(user_id, segment_id, elapsed_time_sec ASC);
-CREATE INDEX idx_segment_efforts_date ON app.segment_efforts(effort_date DESC);
-CREATE INDEX idx_segment_efforts_activity ON app.segment_efforts(activity_id);
+CREATE INDEX IF NOT EXISTS idx_segment_efforts_segment_time ON public.segment_efforts(segment_id, elapsed_time_sec ASC);
+CREATE INDEX IF NOT EXISTS idx_segment_efforts_user_segment ON public.segment_efforts(user_id, segment_id, elapsed_time_sec ASC);
+CREATE INDEX IF NOT EXISTS idx_segment_efforts_date ON public.segment_efforts(effort_date DESC);
+CREATE INDEX IF NOT EXISTS idx_segment_efforts_activity ON public.segment_efforts(activity_id);
 
 -- Composite indexes for filtered leaderboards
-CREATE INDEX idx_segment_efforts_gender ON app.segment_efforts(segment_id, user_gender, elapsed_time_sec);
-CREATE INDEX idx_segment_efforts_age ON app.segment_efforts(segment_id, user_birth_year, elapsed_time_sec);
+CREATE INDEX IF NOT EXISTS idx_segment_efforts_gender ON public.segment_efforts(segment_id, user_gender, elapsed_time_sec);
+CREATE INDEX IF NOT EXISTS idx_segment_efforts_age ON public.segment_efforts(segment_id, user_birth_year, elapsed_time_sec);
 
 -- Enable Row Level Security
-ALTER TABLE app.segment_efforts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.segment_efforts ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 -- Efforts on public segments are viewable by everyone
+DROP POLICY IF EXISTS "Public segment efforts are viewable by everyone" ON public.segment_efforts;
 CREATE POLICY "Public segment efforts are viewable by everyone" 
-    ON app.segment_efforts FOR SELECT 
+    ON public.segment_efforts FOR SELECT 
     USING (
         EXISTS (
-            SELECT 1 FROM app.segments s 
+            SELECT 1 FROM public.segments s 
             WHERE s.segment_id = segment_efforts.segment_id 
             AND s.is_public = true
         )
     );
 
 -- System can insert efforts (via Edge Function)
+DROP POLICY IF EXISTS "System can insert efforts" ON public.segment_efforts;
 CREATE POLICY "System can insert efforts" 
-    ON app.segment_efforts FOR INSERT 
+    ON public.segment_efforts FOR INSERT 
     WITH CHECK (true);
 
 -- Function to get segment leaderboard
-CREATE OR REPLACE FUNCTION app.get_segment_leaderboard(
+CREATE OR REPLACE FUNCTION public.get_segment_leaderboard(
     p_segment_id UUID,
     p_gender TEXT DEFAULT NULL,
     p_min_birth_year INTEGER DEFAULT NULL,
@@ -99,7 +101,7 @@ BEGIN
             se.elapsed_time_sec,
             se.avg_speed_mps,
             se.effort_date
-        FROM app.segment_efforts se
+        FROM public.segment_efforts se
         WHERE 
             se.segment_id = p_segment_id
             AND (p_gender IS NULL OR se.user_gender = p_gender)
@@ -116,14 +118,14 @@ BEGIN
         re.effort_date,
         (re.user_rank = 1) as is_pr
     FROM ranked_efforts re
-    JOIN app.profiles p ON p.user_id = re.user_id
+    JOIN public.profiles p ON p.user_id = re.user_id
     WHERE re.rank <= p_limit
     ORDER BY re.rank;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get user's personal record on a segment
-CREATE OR REPLACE FUNCTION app.get_user_segment_pr(
+CREATE OR REPLACE FUNCTION public.get_user_segment_pr(
     p_user_id UUID,
     p_segment_id UUID
 )
@@ -140,7 +142,7 @@ BEGIN
             se.effort_id,
             se.elapsed_time_sec,
             se.effort_date
-        FROM app.segment_efforts se
+        FROM public.segment_efforts se
         WHERE 
             se.user_id = p_user_id
             AND se.segment_id = p_segment_id
@@ -149,7 +151,7 @@ BEGIN
     ),
     overall_rank AS (
         SELECT COUNT(*) + 1 as rank
-        FROM app.segment_efforts se
+        FROM public.segment_efforts se
         WHERE 
             se.segment_id = p_segment_id
             AND se.elapsed_time_sec < (SELECT elapsed_time_sec FROM user_pr)
@@ -165,15 +167,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update segment effort_count
-CREATE OR REPLACE FUNCTION app.update_segment_effort_count()
+CREATE OR REPLACE FUNCTION public.update_segment_effort_count()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        UPDATE app.segments 
+        UPDATE public.segments 
         SET effort_count = effort_count + 1 
         WHERE segment_id = NEW.segment_id;
     ELSIF TG_OP = 'DELETE' THEN
-        UPDATE app.segments 
+        UPDATE public.segments 
         SET effort_count = GREATEST(0, effort_count - 1)
         WHERE segment_id = OLD.segment_id;
     END IF;
@@ -181,14 +183,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_segment_effort_count_trigger ON public.segment_efforts;
 CREATE TRIGGER update_segment_effort_count_trigger
-    AFTER INSERT OR DELETE ON app.segment_efforts
+    AFTER INSERT OR DELETE ON public.segment_efforts
     FOR EACH ROW
-    EXECUTE FUNCTION app.update_segment_effort_count();
+    EXECUTE FUNCTION public.update_segment_effort_count();
 
 -- Comments
-COMMENT ON TABLE app.segment_efforts IS 'Individual efforts on segments, used for leaderboards and PRs';
-COMMENT ON COLUMN app.segment_efforts.elapsed_time_sec IS 'Time taken to complete the segment (faster is better)';
-COMMENT ON FUNCTION app.get_segment_leaderboard IS 'Get ranked leaderboard for a segment with optional filters';
-COMMENT ON FUNCTION app.get_user_segment_pr IS 'Get user''s personal record on a segment with overall rank';
+COMMENT ON TABLE public.segment_efforts IS 'Individual efforts on segments, used for leaderboards and PRs';
+COMMENT ON COLUMN public.segment_efforts.elapsed_time_sec IS 'Time taken to complete the segment (faster is better)';
+COMMENT ON FUNCTION public.get_segment_leaderboard IS 'Get ranked leaderboard for a segment with optional filters';
+COMMENT ON FUNCTION public.get_user_segment_pr IS 'Get user''s personal record on a segment with overall rank';
 

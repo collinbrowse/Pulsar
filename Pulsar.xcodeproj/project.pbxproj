@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BE83C9FF2ED4AD87003C3662 /* CoreGPX in Frameworks */ = {isa = PBXBuildFile; productRef = BE83C9FE2ED4AD87003C3662 /* CoreGPX */; };
+		BE83CA022ED4ADA4003C3662 /* XMLCoder in Frameworks */ = {isa = PBXBuildFile; productRef = BE83CA012ED4ADA4003C3662 /* XMLCoder */; };
+		BE83CA052ED4ADC3003C3662 /* FitDataProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = BE83CA042ED4ADC3003C3662 /* FitDataProtocol */; };
 		BEF8052D2EB124930018966D /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BEF8052C2EB124930018966D /* PostHog */; };
 /* End PBXBuildFile section */
 
@@ -56,7 +59,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BE83CA022ED4ADA4003C3662 /* XMLCoder in Frameworks */,
 				BEF8052D2EB124930018966D /* PostHog in Frameworks */,
+				BE83CA052ED4ADC3003C3662 /* FitDataProtocol in Frameworks */,
+				BE83C9FF2ED4AD87003C3662 /* CoreGPX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +124,9 @@
 			name = Pulsar;
 			packageProductDependencies = (
 				BEF8052C2EB124930018966D /* PostHog */,
+				BE83C9FE2ED4AD87003C3662 /* CoreGPX */,
+				BE83CA012ED4ADA4003C3662 /* XMLCoder */,
+				BE83CA042ED4ADC3003C3662 /* FitDataProtocol */,
 			);
 			productName = Pulsar;
 			productReference = BEF804432EAFF1D30018966D /* Pulsar.app */;
@@ -203,6 +212,9 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				BEF8052B2EB124930018966D /* XCRemoteSwiftPackageReference "posthog-ios" */,
+				BE83C9FD2ED4AD87003C3662 /* XCRemoteSwiftPackageReference "CoreGPX" */,
+				BE83CA002ED4ADA4003C3662 /* XCRemoteSwiftPackageReference "XMLCoder" */,
+				BE83CA032ED4ADC3003C3662 /* XCRemoteSwiftPackageReference "FitDataProtocol" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BEF804442EAFF1D30018966D /* Products */;
@@ -432,7 +444,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
@@ -476,7 +488,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
@@ -501,7 +513,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pulsar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pulsar";
 				XROS_DEPLOYMENT_TARGET = 26.0;
@@ -527,7 +539,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pulsar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pulsar";
 				XROS_DEPLOYMENT_TARGET = 26.0;
@@ -552,7 +564,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_TARGET_NAME = Pulsar;
 				XROS_DEPLOYMENT_TARGET = 26.0;
@@ -577,7 +589,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_TARGET_NAME = Pulsar;
 				XROS_DEPLOYMENT_TARGET = 26.0;
@@ -626,6 +638,30 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		BE83C9FD2ED4AD87003C3662 /* XCRemoteSwiftPackageReference "CoreGPX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vincentneo/CoreGPX";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.3;
+			};
+		};
+		BE83CA002ED4ADA4003C3662 /* XCRemoteSwiftPackageReference "XMLCoder" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/MaxDesiatov/XMLCoder";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.17.1;
+			};
+		};
+		BE83CA032ED4ADC3003C3662 /* XCRemoteSwiftPackageReference "FitDataProtocol" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FitnessKit/FitDataProtocol";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.6;
+			};
+		};
 		BEF8052B2EB124930018966D /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/PostHog/posthog-ios";
@@ -637,6 +673,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		BE83C9FE2ED4AD87003C3662 /* CoreGPX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BE83C9FD2ED4AD87003C3662 /* XCRemoteSwiftPackageReference "CoreGPX" */;
+			productName = CoreGPX;
+		};
+		BE83CA012ED4ADA4003C3662 /* XMLCoder */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BE83CA002ED4ADA4003C3662 /* XCRemoteSwiftPackageReference "XMLCoder" */;
+			productName = XMLCoder;
+		};
+		BE83CA042ED4ADC3003C3662 /* FitDataProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BE83CA032ED4ADC3003C3662 /* XCRemoteSwiftPackageReference "FitDataProtocol" */;
+			productName = FitDataProtocol;
+		};
 		BEF8052C2EB124930018966D /* PostHog */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BEF8052B2EB124930018966D /* XCRemoteSwiftPackageReference "posthog-ios" */;

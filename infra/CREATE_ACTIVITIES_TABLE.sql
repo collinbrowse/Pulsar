@@ -1,7 +1,8 @@
--- Migration: Create activities table
--- Created: 2025-10-27
--- Description: Store uploaded/imported activities with geospatial data
+-- Quick Fix: Create activities table in public schema
+-- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/jlyamkhkgjkktiypywkk/sql
+-- This creates the activities table that the app needs
 
+-- Create activities table in public schema
 CREATE TABLE IF NOT EXISTS public.activities (
     activity_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -78,33 +79,10 @@ CREATE INDEX IF NOT EXISTS idx_activities_user_type_time ON public.activities(us
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
--- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Public activities are viewable by everyone" ON public.activities;
-DROP POLICY IF EXISTS "Private activities viewable by owner" ON public.activities;
-DROP POLICY IF EXISTS "Users can insert their own activities" ON public.activities;
-DROP POLICY IF EXISTS "Users can update their own activities" ON public.activities;
-DROP POLICY IF EXISTS "Users can delete their own activities" ON public.activities;
-
 -- Public activities are viewable by everyone
 CREATE POLICY "Public activities are viewable by everyone" 
     ON public.activities FOR SELECT 
     USING (visibility = 'public');
-
--- Followers-only activities viewable by followers (to be implemented with follows table)
--- Note: This policy will be created in a later migration after the follows table exists
--- For now, followers visibility is treated as private
--- DROP POLICY IF EXISTS "Followers activities viewable by followers" ON public.activities;
--- CREATE POLICY "Followers activities viewable by followers" 
---     ON public.activities FOR SELECT 
---     USING (
---         visibility = 'followers' AND (
---             auth.uid() = user_id OR
---             EXISTS (
---                 SELECT 1 FROM public.follows 
---                 WHERE follower_id = auth.uid() AND following_id = user_id
---             )
---         )
---     );
 
 -- Private activities only viewable by owner
 CREATE POLICY "Private activities viewable by owner" 
@@ -127,65 +105,10 @@ CREATE POLICY "Users can delete their own activities"
     USING (auth.uid() = user_id);
 
 -- Trigger to update updated_at
-DROP TRIGGER IF EXISTS update_activities_updated_at ON public.activities;
 CREATE TRIGGER update_activities_updated_at 
     BEFORE UPDATE ON public.activities 
     FOR EACH ROW 
     EXECUTE FUNCTION public.update_updated_at_column();
-
--- Function to calculate activity statistics
-CREATE OR REPLACE FUNCTION public.calculate_activity_stats(
-    p_geom GEOMETRY,
-    p_start_time TIMESTAMPTZ,
-    p_end_time TIMESTAMPTZ
-)
-RETURNS TABLE (
-    distance DECIMAL,
-    duration INTEGER,
-    elevation_gain DECIMAL,
-    elevation_loss DECIMAL
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        ST_Length(p_geom::geography)::DECIMAL(10, 2) as distance,
-        EXTRACT(EPOCH FROM (p_end_time - p_start_time))::INTEGER as duration,
-        0::DECIMAL(8, 2) as elevation_gain,  -- Would need elevation data
-        0::DECIMAL(8, 2) as elevation_loss;
-END;
-$$ LANGUAGE plpgsql;
-
--- Add missing columns if they don't exist (for backward compatibility)
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'activities' 
-                   AND column_name = 'original_file_name') THEN
-        ALTER TABLE public.activities ADD COLUMN original_file_name TEXT;
-    END IF;
-    
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'activities' 
-                   AND column_name = 'max_elevation') THEN
-        ALTER TABLE public.activities ADD COLUMN max_elevation DECIMAL(8, 2);
-    END IF;
-    
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'activities' 
-                   AND column_name = 'min_elevation') THEN
-        ALTER TABLE public.activities ADD COLUMN min_elevation DECIMAL(8, 2);
-    END IF;
-    
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'activities' 
-                   AND column_name = 'max_cadence') THEN
-        ALTER TABLE public.activities ADD COLUMN max_cadence INTEGER;
-    END IF;
-END $$;
 
 -- Comments
 COMMENT ON TABLE public.activities IS 'User activities (runs, rides, etc.) with geospatial data';
@@ -193,5 +116,4 @@ COMMENT ON COLUMN public.activities.geom IS 'PostGIS LineString geometry of the 
 COMMENT ON COLUMN public.activities.visibility IS 'Who can see this activity: public, followers, or private';
 COMMENT ON COLUMN public.activities.file_url IS 'URL to original uploaded file (GPX/TCX/FIT) in Supabase Storage';
 COMMENT ON COLUMN public.activities.original_file_name IS 'Original filename of uploaded activity file';
-COMMENT ON COLUMN public.activities.media_url IS 'Optional photo/media attachment URL';
 

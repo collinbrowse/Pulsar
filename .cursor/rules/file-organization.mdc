@@ -1,0 +1,251 @@
+---
+description: File placement rules ensuring files are created in the correct target directories with proper sub-folder organization
+globs: **/*.swift
+alwaysApply: true
+---
+
+# File Organization Rules
+
+Rules for automatically placing Swift files in the correct target directories and sub-folders when creating new files.
+
+## General Rules
+
+**IMPORTANT**: When creating any new Swift file, you MUST determine the correct target directory and sub-folder based on the file's purpose and naming pattern.
+
+## Regular Source Files
+
+All regular Swift source files (non-test files) should be placed in the **Pulsar/** directory and organized according to the existing structure:
+
+- **App/** - App entry point and configuration (PulsarApp.swift, AppState.swift)
+- **Features/** - Feature modules organized by domain:
+  - **Onboarding/** - Authentication and profile creation
+  - **Activities/** - Activity upload, list, and detail views
+  - **Feed/** - Social feed and interactions
+  - **Segments/** - Segments and leaderboards (planned)
+  - **Analytics/** - Dashboard and goals (planned)
+  - **Routes/** - Route discovery and export (planned)
+  - **Clubs/** - Clubs and challenges (planned)
+  - **Privacy/** - Privacy controls (planned)
+  - **Premium/** - Subscription and paywall (planned)
+- **Shared/Models/** - SwiftData models (Activity.swift, Profile.swift, Social.swift, TrackPoint.swift)
+- **Shared/Services/** - Business logic services (*Service.swift)
+- **Shared/Networking/** - API clients (*Client.swift, *Service.swift)
+- **Shared/Utilities/** - Helper utilities (*Manager.swift, *Formatter.swift)
+- **Shared/Parsers/** - File parsers (for future use)
+- **Shared/UI/** - Shared UI components (for future use)
+
+Follow the existing folder structure within `Pulsar/` as documented in [project-structure.mdc](mdc:.cursor/rules/project-structure.mdc).
+
+## XCTest Files (Unit Tests)
+
+### Detection Criteria
+
+A file is an XCTest file if it meets ANY of these criteria:
+- Imports `XCTest`
+- Inherits from `XCTestCase`
+- Has a filename ending in `Tests.swift` (e.g., `MyClassTests.swift`)
+
+### Target Directory
+
+All XCTest files MUST be placed in **PulsarTests/** (at project root level).
+
+### Sub-folder Organization
+
+Based on the file name pattern, place XCTest files in the appropriate sub-folder:
+
+- **Services/** - Tests for service classes
+  - Pattern: `*ServiceTests.swift`
+  - Example: `ActivityServiceTests.swift` → `PulsarTests/Services/ActivityServiceTests.swift`
+
+- **Models/** - Tests for data models
+  - Pattern: `*ModelTests.swift`, `*Tests.swift` (for models)
+  - Example: `ActivityTests.swift` → `PulsarTests/Models/ActivityTests.swift`
+
+- **Networking/** - Tests for API clients
+  - Pattern: `*ClientTests.swift`, `*ServiceTests.swift` (for networking)
+  - Example: `SupabaseClientTests.swift` → `PulsarTests/Networking/SupabaseClientTests.swift`
+
+- **Utilities/** - Tests for utility classes
+  - Pattern: `*ManagerTests.swift`, `*FormatterTests.swift`
+  - Example: `UnitFormatterTests.swift` → `PulsarTests/Utilities/UnitFormatterTests.swift`
+
+- **Features/** - Tests for feature-specific code
+  - Pattern: `*ViewTests.swift`, `*ViewModelTests.swift` (if ViewModels are used)
+  - Example: `ActivitiesViewTests.swift` → `PulsarTests/Features/Activities/ActivitiesViewTests.swift`
+
+- **Root** - Default location for tests that don't match above patterns
+  - Example: `PulsarTests.swift` → `PulsarTests/PulsarTests.swift`
+
+### Sub-folder Decision Logic
+
+1. Check filename for patterns in this order:
+   - `*ServiceTests.swift` → `Services/` (if not networking-related)
+   - `*ClientTests.swift` or `*ServiceTests.swift` (networking) → `Networking/`
+   - `*ManagerTests.swift`, `*FormatterTests.swift` → `Utilities/`
+   - `*ViewTests.swift`, `*ViewModelTests.swift` → `Features/{FeatureName}/`
+   - `*ModelTests.swift` or `*Tests.swift` (for models) → `Models/`
+2. If no pattern matches, place in root of `PulsarTests/`
+
+## Swift Testing Framework Files
+
+### Detection Criteria
+
+A file uses Swift Testing framework if it:
+- Imports `Testing`
+- Uses `@Test` or `@Suite` attributes
+- Does NOT import `XCTest`
+
+### Target Directory
+
+All Swift Testing framework files MUST be placed in **PulsarTests/** (at project root level).
+
+### Sub-folder Organization
+
+Follow the same sub-folder organization as XCTest files, but use Swift Testing framework syntax.
+
+## XCUITest Files (UI Tests)
+
+### Detection Criteria
+
+A file is an XCUITest file if it meets ANY of these criteria:
+- Imports `XCTest` AND uses `XCUIApplication`
+- Has a filename ending in `UITests.swift` (e.g., `MyViewUITests.swift`)
+
+### Target Directory
+
+All XCUITest files MUST be placed in **PulsarUITests/** (at project root level).
+
+### Sub-folder Organization
+
+Based on the file name pattern, place XCUITest files in the appropriate sub-folder:
+
+- **Features/** - UI tests for feature-specific views
+  - Pattern: `*ViewUITests.swift`, `*ScreenUITests.swift`
+  - Example: `ActivitiesViewUITests.swift` → `PulsarUITests/Features/Activities/ActivitiesViewUITests.swift`
+
+- **Flows/** - UI tests for user flows
+  - Pattern: `*FlowUITests.swift`, `*OnboardingUITests.swift`
+  - Example: `OnboardingFlowUITests.swift` → `PulsarUITests/Flows/OnboardingFlowUITests.swift`
+
+- **Root** - Default location for UI tests that don't match above patterns
+  - Example: `PulsarUITests.swift` → `PulsarUITests/PulsarUITests.swift`
+
+### Sub-folder Decision Logic
+
+1. Check filename for patterns in this order:
+   - `*FlowUITests.swift`, `*OnboardingUITests.swift` → `Flows/`
+   - `*ViewUITests.swift`, `*ScreenUITests.swift` → `Features/{FeatureName}/`
+2. If no pattern matches, place in root of `PulsarUITests/`
+
+## Examples
+
+### Creating a New XCTest File
+
+```swift
+// File: ActivityServiceTests.swift
+import XCTest
+@testable import Pulsar
+
+final class ActivityServiceTests: XCTestCase {
+    // Test implementation
+}
+```
+
+**Placement**: `PulsarTests/Services/ActivityServiceTests.swift`
+**Reason**: Filename matches `*ServiceTests.swift` pattern → `Services/` sub-folder
+
+### Creating a New Swift Testing Framework File
+
+```swift
+// File: ActivityServiceTests.swift
+import Testing
+@testable import Pulsar
+
+@Suite("ActivityService Tests")
+struct ActivityServiceTests {
+    @Test("Parse GPX file successfully")
+    func testParseGPX() async throws {
+        // Test implementation
+    }
+}
+```
+
+**Placement**: `PulsarTests/Services/ActivityServiceTests.swift`
+**Reason**: Filename matches `*ServiceTests.swift` pattern → `Services/` sub-folder
+
+### Creating a New XCUITest File
+
+```swift
+// File: ActivitiesViewUITests.swift
+import XCTest
+
+final class ActivitiesViewUITests: XCTestCase {
+    func testActivitiesView() {
+        let app = XCUIApplication()
+        app.launch()
+        // Test implementation
+    }
+}
+```
+
+**Placement**: `PulsarUITests/Features/Activities/ActivitiesViewUITests.swift`
+**Reason**: Filename matches `*ViewUITests.swift` pattern → `Features/Activities/` sub-folder
+
+### Creating a Regular Source File
+
+```swift
+// File: ActivityService.swift
+import Foundation
+
+@MainActor
+final class ActivityService: Sendable {
+    static let shared = ActivityService()
+    // Implementation
+}
+```
+
+**Placement**: `Pulsar/Shared/Services/ActivityService.swift`
+**Reason**: Regular Swift file → `Pulsar/Shared/Services/` directory (matches `*Service.swift` pattern)
+
+### Creating a Feature View File
+
+```swift
+// File: ActivitiesView.swift
+import SwiftUI
+import SwiftData
+
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    // Implementation
+}
+```
+
+**Placement**: `Pulsar/Features/Activities/ActivitiesView.swift`
+**Reason**: Feature-specific view → `Pulsar/Features/Activities/` directory
+
+## Important Notes
+
+1. **Always create sub-folders if they don't exist** - When placing a file in a sub-folder, create the sub-folder directory structure if needed.
+
+2. **Match existing patterns** - Look at existing files to understand the naming conventions and folder structure already in use.
+
+3. **Root vs Sub-folder** - When in doubt about sub-folder placement, check existing files in the directories for similar patterns.
+
+4. **Target directories are at project root** - `PulsarTests/` and `PulsarUITests/` are at the same level as `Pulsar/`, not inside it.
+
+5. **Never place test files in Pulsar/** - Test files should never be placed in the main application directory. They must go in their respective test target directories.
+
+6. **Feature organization** - Feature-specific files (views, view models if used) should be placed in `Pulsar/Features/{FeatureName}/` directories.
+
+7. **Shared code** - Shared code (models, services, utilities, networking) should be placed in `Pulsar/Shared/` subdirectories.
+
+## Verification Checklist
+
+Before finalizing file placement, verify:
+- [ ] File type correctly identified (Regular/XCTest/Swift Testing/XCUITest)
+- [ ] Correct target directory selected (`Pulsar/`, `PulsarTests/`, or `PulsarUITests/`)
+- [ ] Appropriate sub-folder determined based on naming pattern
+- [ ] Sub-folder matches existing project structure
+- [ ] File path is relative to project root
+- [ ] Feature files are in `Pulsar/Features/{FeatureName}/`
+- [ ] Shared files are in `Pulsar/Shared/{Category}/`

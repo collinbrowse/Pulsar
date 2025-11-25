@@ -73,7 +73,7 @@ enum OnboardingDestination: Hashable {
     case welcome
     case signIn
     case signUp
-    case profileCreation(userID: String, email: String, username: String)
+    case profileCreation(userId: String, email: String, username: String)
 }
 
 #Preview {

@@ -56,6 +56,24 @@ struct PulsarApp: App {
     private func configureApp() {
         logger.info("Pulsar app launching...")
         
+        // Restore authentication session from Keychain
+        Task { @MainActor in
+            AuthenticationService.shared.restoreSessionIfNeeded(appState: appState)
+            
+            // Sync activities from backend if user is authenticated
+            if appState.isAuthenticated, let userId = appState.currentUserId {
+                let modelContext = sharedModelContainer.mainContext
+                do {
+                    try await ActivityService.shared.syncActivitiesFromBackend(
+                        for: userId,
+                        modelContext: modelContext
+                    )
+                } catch {
+                    logger.warning("Failed to sync activities on launch: \(error.localizedDescription)")
+                }
+            }
+        }
+        
         // Configure observability (analytics, crashlytics)
         Task { @MainActor in
             ObservabilityManager.shared.configure()

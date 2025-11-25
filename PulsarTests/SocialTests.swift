@@ -11,42 +11,43 @@ import SwiftData
 @testable import Pulsar
 
 @Suite("Social Models Tests")
+@MainActor
 struct SocialModelsTests {
     
     @Test("Follow should initialize correctly")
     func testFollowInitialization() async throws {
         let follow = Follow(
-            followerID: "user1",
-            followingID: "user2"
+            followerId: "user1",
+            followingId: "user2"
         )
         
-        #expect(follow.followerID == "user1")
-        #expect(follow.followingID == "user2")
+        #expect(follow.followerId == "user1")
+        #expect(follow.followingId == "user2")
         #expect(!follow.id.isEmpty)
     }
     
     @Test("Kudo should initialize correctly")
     func testKudoInitialization() async throws {
         let kudo = Kudo(
-            userID: "user1",
-            activityID: "activity1"
+            userId: "user1",
+            activityId: "activity1"
         )
         
-        #expect(kudo.userID == "user1")
-        #expect(kudo.activityID == "activity1")
+        #expect(kudo.userId == "user1")
+        #expect(kudo.activityId == "activity1")
         #expect(!kudo.id.isEmpty)
     }
     
     @Test("Comment should initialize correctly")
     func testCommentInitialization() async throws {
         let comment = Comment(
-            userID: "user1",
-            activityID: "activity1",
+            userId: "user1",
+            activityId: "activity1",
             text: "Great workout!"
         )
         
-        #expect(comment.userID == "user1")
-        #expect(comment.activityID == "activity1")
+        #expect(comment.userId == "user1")
+        #expect(comment.activityId == "activity1")
         #expect(comment.text == "Great workout!")
         #expect(!comment.id.isEmpty)
     }
@@ -55,8 +56,8 @@ struct SocialModelsTests {
     func testFollowDTOConversion() async throws {
         let follow = Follow(
             id: "follow1",
-            followerID: "user1",
-            followingID: "user2"
+            followerId: "user1",
+            followingId: "user2"
         )
         
         let dto = follow.toDTO()
@@ -67,15 +68,15 @@ struct SocialModelsTests {
         
         let reconstructed = Follow.fromDTO(dto)
         #expect(reconstructed.id == follow.id)
-        #expect(reconstructed.followerID == follow.followerID)
+        #expect(reconstructed.followerId == follow.followerId)
     }
     
     @Test("Kudo DTO conversion should preserve data")
     func testKudoDTOConversion() async throws {
         let kudo = Kudo(
             id: "kudo1",
-            userID: "user1",
-            activityID: "activity1"
+            userId: "user1",
+            activityId: "activity1"
         )
         
         let dto = kudo.toDTO()
@@ -92,8 +93,8 @@ struct SocialModelsTests {
     func testCommentDTOConversion() async throws {
         let comment = Comment(
             id: "comment1",
-            userID: "user1",
-            activityID: "activity1",
+            userId: "user1",
+            activityId: "activity1",
             text: "Nice work!"
         )
         
@@ -111,6 +112,7 @@ struct SocialModelsTests {
 }
 
 @Suite("Feed Item Tests")
+@MainActor
 struct FeedItemTests {
     
     @Test("Feed item should calculate time ago correctly")
@@ -119,7 +121,7 @@ struct FeedItemTests {
         let oneHourAgo = now.addingTimeInterval(-3600)
         
         let activity = Activity(
-            userID: "user1",
+            userId: "user1",
             name: "Test Run",
             activityType: .run,
             startDate: oneHourAgo,
@@ -129,7 +131,7 @@ struct FeedItemTests {
         )
         
         let profile = Profile(
-            userID: "user1",
+            userId: "user1",
             username: "testuser",
             email: "test@test.com"
         )

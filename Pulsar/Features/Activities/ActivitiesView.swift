@@ -16,6 +16,7 @@ struct ActivitiesView: View {
     @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
     
     @State private var showUpload = false
+    @State private var isSyncing = false
     
     var body: some View {
         NavigationStack {
@@ -63,8 +64,28 @@ struct ActivitiesView: View {
             }
             .onDelete(perform: deleteActivities)
         }
+        .refreshable {
+            await syncActivities()
+        }
         .navigationDestination(for: Activity.self) { activity in
-            ActivityDetailView(activity: activity)
+            ActivityDetailViewWithLoading(activity: activity)
+        }
+    }
+    
+    private func syncActivities() async {
+        guard let userId = appState.currentUserId else { return }
+        
+        isSyncing = true
+        defer { isSyncing = false }
+        
+        do {
+            try await ActivityService.shared.syncActivitiesFromBackend(
+                for: userId,
+                modelContext: modelContext
+            )
+        } catch {
+            // Silently fail - user can retry
+            print("Failed to sync activities: \(error.localizedDescription)")
         }
     }
     
@@ -82,6 +103,9 @@ struct ActivitiesView: View {
 
 struct ActivityRow: View {
     let activity: Activity
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    @State private var useMetric: Bool = false
     
     var body: some View {
         HStack(spacing: 16) {
@@ -116,11 +140,32 @@ struct ActivityRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 8)
+        .onAppear {
+            updateMetricPreference()
+        }
+    }
+    
+    private func updateMetricPreference() {
+        guard let userId = appState.currentUserId else {
+            useMetric = false
+            return
+        }
+        
+        let descriptor = FetchDescriptor<Profile>(
+            predicate: #Predicate<Profile> { profile in
+                profile.userId == userId
+            }
+        )
+        
+        if let profile = try? modelContext.fetch(descriptor).first {
+            useMetric = profile.useMetricUnits
+        } else {
+            useMetric = false
+        }
     }
     
     private func formatDistance(_ meters: Double) -> String {
-        let km = meters / 1000
-        return String(format: "%.2f km", km)
+        UnitFormatter.shared.formatDistance(meters, useMetric: useMetric)
     }
     
     private func formatDuration(_ seconds: Double) -> String {
@@ -131,6 +176,29 @@ struct ActivityRow: View {
             return "\(hours)h \(minutes)m"
         } else {
             return "\(minutes)m"
+        }
+    }
+}
+
+// MARK: - Activity Detail View With Loading
+
+struct ActivityDetailViewWithLoading: View {
+    let activity: Activity
+    @State private var isLoading = true
+    
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .task {
+                        // Small delay to show loading indicator
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        isLoading = false
+                    }
+            } else {
+                ActivityDetailView(activity: activity)
+            }
         }
     }
 }

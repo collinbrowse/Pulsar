@@ -106,7 +106,7 @@ final class ObservabilityManager: Sendable {
         
         // Report to Crashlytics
         if FeatureFlags.shared.enableCrashlytics {
-            let crashContext: [String: Any] = [
+            let _: [String: Any] = [
                 "error_type": errorType,
                 "user_message": userMessage,
                 "technical_details": technicalDetails,
@@ -136,11 +136,11 @@ final class ObservabilityManager: Sendable {
     
     // MARK: - User Identity
     
-    func identifyUser(_ userID: String, properties: [String: Any] = [:]) {
+    func identifyUser(_ userId: String, properties: [String: Any] = [:]) {
         guard FeatureFlags.shared.enableAnalytics else { return }
         
-        logger.info("User identified: \(userID)")
-        // TODO: PostHog.shared.identify(userID, properties: properties)
+        logger.info("User identified: \(userId)")
+        // TODO: PostHog.shared.identify(userId, properties: properties)
     }
 }
 

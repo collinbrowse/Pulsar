@@ -8,7 +8,7 @@
 import Foundation
 import OSLog
 
-private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "SupabaseClient")
+private nonisolated let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "SupabaseClient")
 
 /// Supabase API client for backend communication
 @MainActor
@@ -90,7 +90,7 @@ final class SupabaseClient: Sendable {
             throw NetworkError.invalidData
         }
         
-        logger.info("✅ Signup Success: userID=\(userId)")
+        logger.info("✅ Signup Success: userId=\(userId)")
         return User(id: userId, email: email)
     }
     
@@ -153,6 +153,8 @@ final class SupabaseClient: Sendable {
         
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let accessToken = json?["access_token"] as? String,
+              let refreshToken = json?["refresh_token"] as? String,
+              let expiresIn = json?["expires_in"] as? Int,
               let userDict = json?["user"] as? [String: Any],
               let userId = userDict["id"] as? String else {
             if let jsonString = String(data: data, encoding: .utf8) {
@@ -162,8 +164,72 @@ final class SupabaseClient: Sendable {
             throw NetworkError.invalidData
         }
         
-        logger.info("✅ SignIn Success: userID=\(userId)")
-        return Session(accessToken: accessToken, userId: userId)
+        // Calculate expiration date (expiresIn is in seconds)
+        let expiresAt = Date().addingTimeInterval(TimeInterval(expiresIn))
+        
+        logger.info("✅ SignIn Success: userId=\(userId), expires in \(expiresIn)s")
+        return Session(accessToken: accessToken, refreshToken: refreshToken, userId: userId, expiresAt: expiresAt)
+    }
+    
+    func refreshToken(refreshToken: String) async throws -> Session {
+        let endpoint = baseURL.appendingPathComponent("/auth/v1/token")
+        
+        logger.info("🔄 Refreshing access token")
+        
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        
+        let body: [String: Any] = [
+            "refresh_token": refreshToken,
+            "grant_type": "refresh_token"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ Refresh Token: Invalid HTTP response")
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            var errorCode: String?
+            var errorMessage: String?
+            
+            if let errorString = String(data: data, encoding: .utf8) {
+                logger.error("❌ Refresh Token Error (\(httpResponse.statusCode)): \(errorString)")
+                print("❌ Refresh Token Error (\(httpResponse.statusCode)): \(errorString)")
+                
+                if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    errorCode = errorJson["error"] as? String
+                    errorMessage = errorJson["error_description"] as? String
+                }
+            }
+            
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode, errorCode: errorCode, message: errorMessage)
+        }
+        
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let accessToken = json?["access_token"] as? String,
+              let expiresIn = json?["expires_in"] as? Int,
+              let userDict = json?["user"] as? [String: Any],
+              let userId = userDict["id"] as? String else {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                logger.error("❌ Failed to parse refreshed session from response: \(jsonString)")
+                print("Failed to parse refreshed session from response: \(jsonString)")
+            }
+            throw NetworkError.invalidData
+        }
+        
+        // Use new refresh token if provided, otherwise keep the old one
+        let newRefreshToken = (json?["refresh_token"] as? String) ?? refreshToken
+        
+        let expiresAt = Date().addingTimeInterval(TimeInterval(expiresIn))
+        
+        logger.info("✅ Token refreshed successfully: userId=\(userId), expires in \(expiresIn)s")
+        return Session(accessToken: accessToken, refreshToken: newRefreshToken, userId: userId, expiresAt: expiresAt)
     }
     
     // MARK: - REST API
@@ -172,7 +238,8 @@ final class SupabaseClient: Sendable {
         from table: String,
         select: String = "*",
         filter: [String: Any] = [:],
-        accessToken: String? = nil
+        accessToken: String? = nil,
+        schema: String = "public"
     ) async throws -> [T] {
         var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
         
@@ -191,7 +258,7 @@ final class SupabaseClient: Sendable {
         
         var request = URLRequest(url: components.url!)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("public", forHTTPHeaderField: "Accept-Profile") // Use public schema
+        request.setValue(schema, forHTTPHeaderField: "Accept-Profile")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         
         if let token = accessToken {
@@ -225,7 +292,7 @@ final class SupabaseClient: Sendable {
         }
         
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Don't use .convertFromSnakeCase - DTOs have explicit CodingKeys
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
@@ -302,7 +369,8 @@ final class SupabaseClient: Sendable {
     func upsert<T: Encodable>(
         table: String,
         data: T,
-        accessToken: String
+        accessToken: String,
+        schema: String = "public"
     ) async throws {
         let endpoint = baseURL.appendingPathComponent("/rest/v1/\(table)")
         
@@ -311,7 +379,7 @@ final class SupabaseClient: Sendable {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("public", forHTTPHeaderField: "Content-Profile") // Use public schema for writes
+        request.setValue(schema, forHTTPHeaderField: "Content-Profile")
         request.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer") // Upsert on conflict
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -351,7 +419,8 @@ final class SupabaseClient: Sendable {
         table: String,
         data: T,
         filter: [String: Any],
-        accessToken: String
+        accessToken: String,
+        schema: String = "public"
     ) async throws {
         var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
         
@@ -367,7 +436,7 @@ final class SupabaseClient: Sendable {
         var request = URLRequest(url: components.url!)
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("public", forHTTPHeaderField: "Content-Profile") // Use public schema for writes
+        request.setValue(schema, forHTTPHeaderField: "Content-Profile")
         request.setValue("return=representation", forHTTPHeaderField: "Prefer") // Return updated rows
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -405,6 +474,48 @@ final class SupabaseClient: Sendable {
         } else {
             logger.info("✅ Update Success")
         }
+    }
+    
+    func delete(
+        table: String,
+        filter: [String: Any],
+        accessToken: String,
+        schema: String = "public"
+    ) async throws {
+        var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
+        
+        var queryItems: [URLQueryItem] = []
+        for (key, value) in filter {
+            queryItems.append(URLQueryItem(name: key, value: "eq.\(value)"))
+        }
+        components.queryItems = queryItems
+        
+        logger.info("📤 Delete Request: DELETE \(components.url!.absoluteString)")
+        logger.debug("   Table: \(table), Filters: \(filter)")
+        
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(schema, forHTTPHeaderField: "Content-Profile")
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("❌ Delete: Invalid HTTP response")
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorString = String(data: responseData, encoding: .utf8) {
+                logger.error("❌ Delete Error (\(httpResponse.statusCode)): \(errorString)")
+                print("Supabase delete error (\(httpResponse.statusCode)): \(errorString)")
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        
+        logger.info("✅ Delete Success")
     }
     
     // MARK: - Edge Functions
@@ -449,7 +560,14 @@ struct User: Codable, Sendable {
 
 struct Session: Codable, Sendable {
     let accessToken: String
+    let refreshToken: String
     let userId: String
+    let expiresAt: Date
+    
+    /// Check if the access token is expired or will expire soon (within 5 minutes)
+    var isExpired: Bool {
+        expiresAt.timeIntervalSinceNow < 300 // 5 minutes buffer
+    }
 }
 
 // MARK: - Errors

@@ -76,15 +76,21 @@ struct SignInView: View {
                 
                 // Sign In Button
                 Button(action: signIn) {
-                    if isLoading {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Text("Sign In")
-                            .font(.headline)
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Sign In")
+                                .font(.headline)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .contentShape(Rectangle())
                 }
                 .frame(maxWidth: .infinity)
+                .frame(height: 50)
                 .padding()
                 .background(email.isEmpty || password.isEmpty ? Color(.systemGray4) : .blue)
                 .foregroundStyle(.white)
@@ -141,20 +147,20 @@ struct SignInView: View {
                 let session = try await authService.signIn(email: email, password: password)
                 
                 // Check if profile exists
-                let profiles: [ProfileDTO] = try await authService.fetchProfiles(userID: session.userId)
+                let profiles: [ProfileDTO] = try await authService.fetchProfiles(userId: session.userId)
                 
                 await MainActor.run {
                     if let existingProfile = profiles.first {
                         // Profile exists - user is fully set up
                         print("Existing profile found: \(existingProfile.username)")
                         appState.isAuthenticated = true
-                        appState.currentUserID = session.userId
+                        appState.currentUserId = session.userId
                         // TODO: Load profile into SwiftData
                     } else {
                         // No profile - navigate to profile creation
                         print("No profile found - navigating to profile creation")
                         path.append(OnboardingDestination.profileCreation(
-                            userID: session.userId,
+                            userId: session.userId,
                             email: email,
                             username: "user_\(session.userId.prefix(8))"
                         ))

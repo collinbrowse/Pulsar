@@ -11,6 +11,7 @@ import SwiftData
 @testable import Pulsar
 
 @Suite("Activity Model Tests")
+@MainActor
 struct ActivityTests {
     
     @Test("Activity should initialize with required properties")
@@ -19,7 +20,7 @@ struct ActivityTests {
         let endDate = startDate.addingTimeInterval(1800) // 30 minutes
         
         let activity = Activity(
-            userID: "test-user-123",
+            userId: "test-user-123",
             name: "Morning Run",
             activityType: .run,
             startDate: startDate,
@@ -28,7 +29,7 @@ struct ActivityTests {
             duration: 1800
         )
         
-        #expect(activity.userID == "test-user-123")
+        #expect(activity.userId == "test-user-123")
         #expect(activity.name == "Morning Run")
         #expect(activity.activityType == .run)
         #expect(activity.distance == 5000)
@@ -40,7 +41,7 @@ struct ActivityTests {
     @Test("Activity should calculate average pace correctly")
     func testAveragePaceCalculation() async throws {
         let activity = Activity(
-            userID: "test-user",
+            userId: "test-user",
             name: "Test Run",
             activityType: .run,
             startDate: Date(),
@@ -57,7 +58,7 @@ struct ActivityTests {
     @Test("Activity should calculate average speed in km/h")
     func testAverageSpeedCalculation() async throws {
         let activity = Activity(
-            userID: "test-user",
+            userId: "test-user",
             name: "Test Ride",
             activityType: .ride,
             startDate: Date(),
@@ -92,7 +93,7 @@ struct ActivityTests {
     func testDTOConversion() async throws {
         let activity = Activity(
             id: "test-id-123",
-            userID: "user-456",
+            userId: "user-456",
             name: "Test Activity",
             activityType: .run,
             startDate: Date(),
@@ -125,19 +126,31 @@ struct ActivityTests {
 }
 
 @Suite("ActivityService Tests")
+@MainActor
 struct ActivityServiceTests {
     
     @Test("ActivityService should reject unsupported file formats")
     func testUnsupportedFileFormat() async throws {
-        let service = await ActivityService.shared
+        let service = ActivityService.shared
         
         // Create a temporary file with unsupported extension
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test.xyz")
         try "dummy content".write(to: tempURL, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: tempURL) }
         
-        await #expect(throws: ActivityServiceError.self) {
-            try await service.parseActivityFile(from: tempURL, userID: "test-user")
+        // Test that unsupported format throws error
+        do {
+            _ = try await service.parseActivityFile(from: tempURL, userId: "test-user")
+            Issue.record("Should have thrown ActivityServiceError.unsupportedFileFormat")
+        } catch let error as ActivityServiceError {
+            // Verify it's the correct error type
+            if case .unsupportedFileFormat(let format) = error {
+                #expect(format == "xyz")
+            } else {
+                Issue.record("Expected unsupportedFileFormat error, got: \(error)")
+            }
+        } catch {
+            Issue.record("Unexpected error type: \(error)")
         }
     }
     

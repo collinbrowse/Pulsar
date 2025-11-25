@@ -1,0 +1,566 @@
+---
+description: UI architecture patterns for Pulsar - Hybrid SwiftUI architecture
+globs: **/*.swift
+alwaysApply: true
+---
+
+# UI Architecture Patterns
+
+Pulsar uses a **hybrid architecture** that balances SwiftUI's declarative nature with testability and maintainability.
+
+## Architecture Overview
+
+**Default Pattern: SwiftUI + Services + SwiftData** (for simple views)
+- Views use `@Query` for SwiftData reactive data binding
+- Direct service calls (ActivityService.shared, SocialService.shared)
+- Business logic in Services (`@MainActor` singletons), not Views
+- `@Observable` AppState for global application state
+- Views handle UI state with `@State`
+- Use for: simple list views, CRUD operations, views that primarily display data
+
+**Optional Pattern: MVVM with ViewModels** (for complex screens)
+- ViewModels using `@Observable` macro and `DynamicProperty` protocol
+- ViewModels can use `@Query` via `DynamicProperty` to access SwiftData
+- Centralized state management (loading states, errors, derived data)
+- ViewModels call Services for business logic
+- Use for: complex screens with multiple data sources, heavy state management, screens requiring extensive unit testing
+
+## Root Views vs Content Views
+
+Pulsar uses a **Root View / Content View** pattern to create maintainable, reusable views. This pattern aligns with Pulsar's hybrid architecture and helps prevent massive views.
+
+### Root Views
+
+Root views act as intermediaries between content views and business logic:
+
+- Use `@Query` for SwiftData reactive data fetching
+- Use `@Environment` for dependency injection (ModelContext, AppState)
+- Call Services directly (ActivityService.shared, SocialService.shared)
+- Optionally use ViewModels for complex screens (3+ data sources, complex state)
+- Handle async operations and lifecycle management
+- Coordinate navigation and state
+- Pass simple data types to content views
+
+**Examples**: `ActivitiesView`, `FeedView`, `ActivityDetailView` (when acting as coordinator)
+
+### Content Views
+
+Content views are pure UI presentation components:
+
+- Accept simple data types as inputs (String, Int, Double, Date, URL, Bool)
+- No `@Query` or data fetching
+- No `@Environment` except for styling (colors, fonts)
+- No Service calls or business logic
+- No ViewModels
+- Pure functions of their inputs
+- Highly reusable and testable
+
+**Examples**: `StatCard`, `DetailRow`, `ActivityHeaderView` (if extracted)
+
+### Integration with Hybrid Architecture
+
+**Root Views can use:**
+- Services directly (default pattern) - e.g., `ActivitiesView`
+- ViewModels when complexity justifies it (optional pattern) - e.g., complex `ActivityDetailView`
+
+**Content Views should never:**
+- Use ViewModels
+- Call Services
+- Use `@Query` or `@Environment(\.modelContext)`
+- Accept SwiftData models directly
+
+**Key Principle**: Root views coordinate and fetch data, then pass simple data types to content views for presentation.
+
+For detailed guidelines on Root/Content view patterns, see [swiftui-view-composition.mdc](mdc:.cursor/rules/swiftui-view-composition.mdc).
+
+## Decision Criteria: When to Use ViewModels
+
+Add a ViewModel when a screen meets **any** of these criteria:
+1. **3+ data sources** - Multiple SwiftData queries, API calls, or derived data
+2. **Complex state management** - Multiple loading states, error states, or derived state
+3. **Extensive unit testing needs** - Business logic that needs to be tested independently
+
+**Default to Views + Services** unless complexity justifies a ViewModel.
+
+## Default Pattern: SwiftUI + Services + SwiftData
+
+### View Structure
+
+```swift
+// Good: Default pattern - ActivitiesView
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    
+    var body: some View {
+        NavigationStack {
+            List(activities) { activity in
+                NavigationLink {
+                    ActivityDetailViewWithLoading(activity: activity)
+                } label: {
+                    ActivityRow(activity: activity)
+                }
+            }
+            .navigationTitle("Activities")
+            .refreshable {
+                await syncActivities()
+            }
+        }
+    }
+    
+    private func syncActivities() async {
+        guard let userId = appState.currentUserId else { return }
+        try? await ActivityService.shared.syncActivitiesFromBackend(
+            for: userId, modelContext: modelContext
+        )
+    }
+    
+    private func deleteActivities(at offsets: IndexSet) {
+        Task {
+            for index in offsets {
+                let activity = activities[index]
+                try? await ActivityService.shared.deleteActivity(
+                    activity, modelContext: modelContext
+                )
+            }
+        }
+    }
+}
+```
+
+**Characteristics:**
+- Uses `@Query` for reactive SwiftData fetching
+- Direct service calls (ActivityService.shared)
+- Business logic in Services, not Views
+- UI state handled with `@State` if needed
+- Simple, SwiftUI-idiomatic pattern
+
+### Service Structure
+
+```swift
+// Good: Service with @MainActor
+@MainActor
+final class ActivityService: Sendable {
+    static let shared = ActivityService()
+    
+    private init() {}
+    
+    func parseActivityFile(from url: URL, userId: String) async throws -> Activity {
+        let data = try Data(contentsOf: url)
+        let fileExtension = url.pathExtension.lowercased()
+        
+        switch fileExtension {
+        case "gpx":
+            return try await parseGPX(data: data, fileName: url.lastPathComponent, userId: userId)
+        case "tcx":
+            return try await parseTCX(data: data, fileName: url.lastPathComponent, userId: userId)
+        case "fit":
+            throw ActivityServiceError.unsupportedFileFormat("fit")
+        default:
+            throw ActivityServiceError.unsupportedFileFormat(fileExtension)
+        }
+    }
+    
+    func saveActivity(_ activity: Activity, modelContext: ModelContext) async throws {
+        modelContext.insert(activity)
+        try modelContext.save()
+        
+        // Sync to backend
+        try await syncActivityToBackend(activity)
+    }
+    
+    func syncActivitiesFromBackend(for userId: String, modelContext: ModelContext) async throws {
+        // Fetch from backend and merge with local data
+        let backendActivities = try await fetchActivitiesFromBackend(userId: userId)
+        
+        for dto in backendActivities {
+            // Merge logic
+        }
+    }
+    
+    // MARK: - Private Helpers
+    private func parseGPX(data: Data, fileName: String, userId: String) async throws -> Activity {
+        // GPX parsing logic
+    }
+}
+```
+
+**Service Rules:**
+- Mark with `@MainActor` for UI-related services
+- Use `static let shared` for singleton pattern
+- Private init to enforce singleton
+- Business logic in Services, not Views
+- Services handle async operations and error handling
+
+### AppState Structure
+
+```swift
+// Good: AppState with @Observable
+@Observable
+final class AppState: Sendable {
+    var isAuthenticated: Bool = false
+    var currentUserId: String?
+    
+    func signIn(userId: String) {
+        self.currentUserId = userId
+        self.isAuthenticated = true
+    }
+    
+    func signOut() {
+        self.currentUserId = nil
+        self.isAuthenticated = false
+    }
+}
+```
+
+**AppState Rules:**
+- Use `@Observable` macro (not `ObservableObject`)
+- Global application state
+- Injected via `@Environment(AppState.self)`
+- Simple state management for authentication, user info, etc.
+
+### SwiftData Integration
+
+```swift
+// Good: SwiftData model
+@Model
+final class Activity {
+    @Attribute(.unique) var id: String
+    var userId: String
+    var name: String
+    var distance: Double
+    var duration: TimeInterval
+    var startDate: Date
+    
+    @Relationship(deleteRule: .cascade) var trackPoints: [TrackPoint]?
+    
+    init(id: String = UUID().uuidString, userId: String, name: String, distance: Double, duration: TimeInterval, startDate: Date) {
+        self.id = id
+        self.userId = userId
+        self.name = name
+        self.distance = distance
+        self.duration = duration
+        self.startDate = startDate
+    }
+}
+
+// Good: Using @Query in Views
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    // Views automatically update when SwiftData changes
+}
+```
+
+**SwiftData Rules:**
+- Use `@Model` for SwiftData models
+- Use `@Query` in Views for reactive data fetching
+- Views automatically update when data changes
+- No manual state synchronization needed
+
+## Optional Pattern: MVVM with ViewModels
+
+### When to Use ViewModels
+
+Use ViewModels for complex screens that meet any of these criteria:
+- **3+ data sources** - Multiple SwiftData queries, API calls, or derived data
+- **Complex state management** - Multiple loading states, error states, or derived state
+- **Extensive unit testing needs** - Business logic that needs to be tested independently
+
+### ViewModel Structure
+
+```swift
+// Good: ViewModel for complex screen
+@MainActor
+@Observable
+final class ActivityDetailViewModel: DynamicProperty {
+    @Query private var activities: [Activity]
+    
+    var isLoading = false
+    var errorMessage: String?
+    var useMetricUnits = false
+    var isRecalculating = false
+    
+    private let activityService: ActivityService
+    private let modelContext: ModelContext
+    
+    init(activityService: ActivityService = .shared, modelContext: ModelContext) {
+        self.activityService = activityService
+        self.modelContext = modelContext
+    }
+    
+    func recalculateMetrics(for activity: Activity) async {
+        guard !isRecalculating else { return }
+        isRecalculating = true
+        defer { isRecalculating = false }
+        
+        do {
+            try await activityService.recalculateMetrics(for: activity, modelContext: modelContext)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func loadProfile() async {
+        // Load user profile for unit preferences
+        // Multiple data sources
+    }
+}
+```
+
+**ViewModel Rules:**
+- Use `@Observable` macro (not `ObservableObject`)
+- Conform to `DynamicProperty` to use `@Query`
+- Mark with `@MainActor` for UI-related code
+- Centralize state management (loading, errors, derived state)
+- ViewModels call Services for business logic
+- Use dependency injection for testability
+
+### View Using ViewModel
+
+```swift
+// Good: View using ViewModel
+struct ActivityDetailView: View {
+    @State private var viewModel: ActivityDetailViewModel
+    let activity: Activity
+    
+    init(activity: Activity, modelContext: ModelContext) {
+        self.activity = activity
+        _viewModel = State(initialValue: ActivityDetailViewModel(modelContext: modelContext))
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if viewModel.isRecalculating {
+                    ProgressView("Recalculating metrics...")
+                }
+                
+                if let errorMessage = viewModel.errorMessage {
+                    Text("Error: \(errorMessage)")
+                        .foregroundColor(.red)
+                }
+                
+                // Activity details
+                ActivityMetricsView(activity: activity, useMetricUnits: viewModel.useMetricUnits)
+                
+                // Map view
+                ActivityMapView(activity: activity, isInteractive: false)
+            }
+            .padding()
+        }
+        .navigationTitle(activity.name)
+        .task {
+            await viewModel.loadProfile()
+            
+            // Auto-recalculate if needed
+            if ActivityService.shared.needsRecalculation(activity) {
+                await viewModel.recalculateMetrics(for: activity)
+            }
+        }
+    }
+}
+```
+
+**View with ViewModel Rules:**
+- Create ViewModel in `init` or as `@State`
+- View observes ViewModel state via `@Observable`
+- View calls ViewModel methods for actions
+- ViewModel handles business logic and state management
+
+## Examples from Pulsar Codebase
+
+### Example 1: ActivitiesView (Default Pattern)
+
+```swift
+// Pulsar/Features/Activities/ActivitiesView.swift
+struct ActivitiesView: View {
+    @Query(sort: \Activity.startDate, order: .reverse) private var activities: [Activity]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    
+    var body: some View {
+        NavigationStack {
+            List(activities) { activity in
+                NavigationLink {
+                    ActivityDetailViewWithLoading(activity: activity)
+                } label: {
+                    ActivityRow(activity: activity)
+                }
+            }
+            .navigationTitle("Activities")
+            .refreshable {
+                await syncActivities()
+            }
+        }
+    }
+    
+    private func syncActivities() async {
+        guard let userId = appState.currentUserId else { return }
+        try? await ActivityService.shared.syncActivitiesFromBackend(
+            for: userId, modelContext: modelContext
+        )
+    }
+}
+```
+
+**Why Default Pattern:**
+- Simple list view with single data source (`@Query`)
+- Direct service call for sync
+- No complex state management needed
+
+### Example 2: ActivityDetailView (Could Use ViewModel)
+
+```swift
+// Pulsar/Features/Activities/ActivityDetailView.swift
+struct ActivityDetailView: View {
+    let activity: Activity
+    @Environment(\.modelContext) private var modelContext
+    @Query private var profiles: [Profile]
+    
+    @State private var isLoading = false
+    @State private var useMetricUnits = false
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if isLoading {
+                    ProgressView("Recalculating metrics...")
+                }
+                
+                ActivityMetricsView(activity: activity, useMetricUnits: useMetricUnits)
+                ActivityMapView(activity: activity, isInteractive: false)
+            }
+            .padding()
+        }
+        .navigationTitle(activity.name)
+        .task {
+            // Load profile for unit preferences
+            if let profile = profiles.first(where: { $0.userId == activity.userId }) {
+                useMetricUnits = profile.useMetricUnits
+            }
+            
+            // Auto-recalculate if needed
+            if ActivityService.shared.needsRecalculation(activity) {
+                isLoading = true
+                try? await ActivityService.shared.recalculateMetrics(for: activity, modelContext: modelContext)
+                isLoading = false
+            }
+        }
+    }
+}
+```
+
+**Current Implementation:**
+- Uses default pattern with `@State` for loading
+- Could benefit from ViewModel if more complexity is added
+- Currently simple enough for default pattern
+
+### Example 3: FeedView (Default Pattern)
+
+```swift
+// Pulsar/Features/Feed/FeedView.swift
+struct FeedView: View {
+    @Query(sort: \Social.createdAt, order: .reverse) private var feedItems: [Social]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
+    
+    var body: some View {
+        NavigationStack {
+            List(feedItems) { item in
+                FeedItemRow(item: item)
+            }
+            .navigationTitle("Feed")
+            .refreshable {
+                await syncFeed()
+            }
+        }
+    }
+    
+    private func syncFeed() async {
+        guard let userId = appState.currentUserId else { return }
+        try? await SocialService.shared.syncFeed(for: userId, modelContext: modelContext)
+    }
+}
+```
+
+**Why Default Pattern:**
+- Simple list view with single data source
+- Direct service call for sync
+- No complex state management
+
+## Service Usage Patterns
+
+### Service Singleton Pattern
+
+```swift
+@MainActor
+final class ActivityService: Sendable {
+    static let shared = ActivityService()
+    
+    private init() {}
+    
+    // Public methods
+    func parseActivityFile(from url: URL, userId: String) async throws -> Activity {
+        // Implementation
+    }
+}
+```
+
+**Service Pattern Rules:**
+- Use `static let shared` for singleton
+- Private init to enforce singleton
+- Mark with `@MainActor` for UI-related services
+- Services handle business logic and async operations
+
+### Service Error Handling
+
+```swift
+enum ActivityServiceError: Error, LocalizedError {
+    case unsupportedFileFormat(String)
+    case invalidFileData
+    case parsingFailed(String)
+    case noTrackPoints
+    case invalidCoordinates
+    case notAuthenticated
+    
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedFileFormat(let format):
+            return "Unsupported file format: .\(format)"
+        case .notAuthenticated:
+            return "User is not authenticated"
+        // ... other cases
+        }
+    }
+}
+```
+
+**Error Handling Rules:**
+- Define specific error types
+- Conform to `LocalizedError` for user-facing messages
+- Services throw errors, Views handle them
+
+## Summary: Architecture Decision Flow
+
+1. **Start with Default Pattern** (Views + Services + SwiftData)
+   - Use `@Query` for SwiftData
+   - Direct service calls
+   - `@State` for UI state
+
+2. **Evaluate Complexity**
+   - Count data sources (3+ = consider ViewModel)
+   - Assess state management needs (complex = consider ViewModel)
+   - Consider testing needs (extensive = consider ViewModel)
+
+3. **Add ViewModel if Needed**
+   - Use `@Observable` and `DynamicProperty`
+   - Centralize state management
+   - Call Services for business logic
+
+**Key Principles:**
+- Default to Views + Services (SwiftUI-idiomatic)
+- Add ViewModels only when complexity justifies it
+- Services handle business logic
+- Views are declarative and reactive
+- SwiftData provides reactive data binding

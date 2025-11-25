@@ -8,6 +8,7 @@
 import XCTest
 
 /// UI Tests for Milestone 2 - Onboarding & Authentication Flow
+@MainActor
 final class OnboardingUITests: XCTestCase {
     
     var app: XCUIApplication!

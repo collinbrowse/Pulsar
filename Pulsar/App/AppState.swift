@@ -14,7 +14,7 @@ final class AppState: Sendable {
     // MARK: - Authentication
     
     var isAuthenticated: Bool = false
-    var currentUserID: String?
+    var currentUserId: String?
     
     // MARK: - User Profile
     
@@ -36,7 +36,7 @@ final class AppState: Sendable {
 
 /// Temporary user profile model (will be replaced with SwiftData model)
 struct UserProfile: Sendable, Codable {
-    let userID: String
+    let userId: String
     let username: String
     let fullName: String?
     let avatarURL: String?

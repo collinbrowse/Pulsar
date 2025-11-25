@@ -1,0 +1,212 @@
+---
+description: How to run unit and UI tests for Pulsar
+alwaysApply: false
+---
+
+# Test Execution
+
+Pulsar uses Test-Driven Development (TDD) approach: write tests first, then implement functionality.
+
+## Test Execution (Simulator)
+
+1. Use the project scheme and run tests on **any available iOS Simulator**. Command:
+
+   ```bash
+   xcodebuild -project Pulsar.xcodeproj \
+              -scheme Pulsar \
+              -configuration Debug \
+              -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+              test
+   ```
+
+2. **Simulator Selection**: You can use any available simulator. If a specific simulator is unavailable, use a generic destination:
+
+   ```bash
+   xcodebuild -project Pulsar.xcodeproj \
+              -scheme Pulsar \
+              -configuration Debug \
+              -destination 'generic/platform=iOS Simulator' \
+              test
+   ```
+
+3. **List Available Simulators**: To see available simulators:
+
+   ```bash
+   xcodebuild -project Pulsar.xcodeproj \
+              -scheme Pulsar \
+              -showdestinations
+   ```
+
+## Test Plans and Test Targets
+
+The project uses two test targets:
+
+1. **Unit Tests**: Test target `PulsarTests` - For XCTest and Swift Testing framework unit tests
+   - Test target name: `PulsarTests`
+   - Location: `PulsarTests/` directory at project root
+   - Uses both XCTest and Swift Testing frameworks
+
+2. **UI Tests**: Test target `PulsarUITests` - For XCUITest UI tests
+   - Test target name: `PulsarUITests`
+   - Location: `PulsarUITests/` directory at project root
+   - Uses XCTest framework
+
+### Running All Tests
+
+```bash
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+           test
+```
+
+### Running Specific Tests
+
+When running a specific test, use the **test target name** (not the app target name) in the `-only-testing` parameter:
+
+```bash
+# Correct format: -only-testing:TEST_TARGET_NAME/TestClassName
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+           test -only-testing:PulsarTests/ActivityServiceTests
+```
+
+**Important**: 
+- Use `PulsarTests` (not `Pulsar`) as the test target name for unit tests
+- Use `PulsarUITests` as the test target name for UI tests
+- The format is: `-only-testing:TEST_TARGET_NAME/TestClassName`
+
+### Running Tests by Suite (Swift Testing)
+
+For Swift Testing framework tests organized in suites:
+
+```bash
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+           test -only-testing:PulsarTests/ActivityServiceTests/testParseGPX
+```
+
+## Test-Driven Development (TDD)
+
+**All new features must follow TDD approach:**
+
+1. **Write tests first** - Before implementing functionality, write the tests
+2. **Run tests** - Tests should fail initially (red phase)
+3. **Implement functionality** - Write the minimum code to make tests pass (green phase)
+4. **Refactor** - Improve code while keeping tests passing (refactor phase)
+5. **Repeat** - Continue this cycle for each new feature
+
+### TDD Workflow
+
+```bash
+# 1. Write test first
+# Create test file: PulsarTests/Services/ActivityServiceTests.swift
+
+# 2. Run tests (should fail)
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+           test -only-testing:PulsarTests/ActivityServiceTests
+
+# 3. Implement functionality
+# Write code in ActivityService.swift
+
+# 4. Run tests again (should pass)
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+           test -only-testing:PulsarTests/ActivityServiceTests
+
+# 5. Refactor if needed, keeping tests passing
+```
+
+## Testing Procedure Before Feature Completion
+
+**Before completing a feature, tests must be run and all must succeed.**
+
+1. **Run all tests** using the test execution command above
+2. **Analyze failures**: For each test failure, determine if:
+   - A **codebase fix** is needed (implementation bug, incorrect logic, missing functionality)
+   - A **test fix** is needed (incorrect test expectations, outdated test assumptions, test setup issues)
+3. **Fix and re-run**: After making fixes (code or test), re-run the tests
+4. **Iterate**: Continue this process (fix → re-run → analyze) until all tests pass
+5. **Handle persistent failures**: If there are many failures in a row (3+ consecutive failures after fixes), analyze the feasibility of the test:
+   - Determine why the test cannot pass
+   - Report back to the user with:
+     - Explanation of why the test is failing
+     - Whether the test is feasible or needs to be modified/removed
+     - Recommendations for resolving the issue
+   - Do not continue attempting fixes indefinitely without user feedback
+
+**Key Principles:**
+- All tests must pass before a feature is considered complete
+- Test failures should be systematically addressed, not ignored
+- If tests consistently fail after multiple fix attempts, escalate to the user for guidance
+- Follow TDD: write tests first, then implement
+
+## Test Organization
+
+### Unit Tests: PulsarTests/
+
+- **Location**: `PulsarTests/` directory at project root
+- **Frameworks**: Both XCTest and Swift Testing framework
+- **Organization**: Organized by category (Services/, Models/, Networking/, Utilities/, Features/)
+- **Examples**: 
+  - `PulsarTests/Services/ActivityServiceTests.swift`
+  - `PulsarTests/Models/ActivityTests.swift`
+  - `PulsarTests/Networking/SupabaseClientTests.swift`
+
+### UI Tests: PulsarUITests/
+
+- **Location**: `PulsarUITests/` directory at project root
+- **Framework**: XCTest framework
+- **Organization**: Organized by feature (Features/) or flow (Flows/)
+- **Examples**:
+  - `PulsarUITests/Features/Activities/ActivitiesViewUITests.swift`
+  - `PulsarUITests/Flows/OnboardingFlowUITests.swift`
+
+## Building Without Testing
+
+To build the project without running tests:
+
+```bash
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+           build
+```
+
+## Common Issues
+
+### Simulator Not Available
+
+If a specific simulator is not available, use a generic destination:
+
+```bash
+xcodebuild -project Pulsar.xcodeproj \
+           -scheme Pulsar \
+           -configuration Debug \
+           -destination 'generic/platform=iOS Simulator' \
+           test
+```
+
+### Test Target Not Found
+
+Ensure you're using the correct test target name:
+- Unit tests: `PulsarTests`
+- UI tests: `PulsarUITests`
+
+### Tests Not Running
+
+Check that:
+1. Test files are in the correct directories (`PulsarTests/` or `PulsarUITests/`)
+2. Test files are added to the correct test target in Xcode
+3. Test methods are properly marked with `@Test` (Swift Testing) or `func test...()` (XCTest)

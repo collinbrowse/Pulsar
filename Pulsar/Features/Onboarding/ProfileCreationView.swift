@@ -8,9 +8,10 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
+import UIKit
 
 struct ProfileCreationView: View {
-    let userID: String
+    let userId: String
     let email: String
     @Binding var path: NavigationPath
     @Environment(\.modelContext) private var modelContext
@@ -22,15 +23,15 @@ struct ProfileCreationView: View {
     @State private var birthYear: String = ""
     @State private var weightKg: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
-    @State private var profileImage: Image?
+    @State private var profileUIImage: UIImage?
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showSuccess = false
     
     private let authService = AuthenticationService.shared
     
-    init(userID: String, email: String, username: String, path: Binding<NavigationPath>) {
-        self.userID = userID
+    init(userId: String, email: String, username: String, path: Binding<NavigationPath>) {
+        self.userId = userId
         self.email = email
         self._path = path
         // Use the username that was provided during signup
@@ -41,152 +42,10 @@ struct ProfileCreationView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
-                    Text("Complete Your Profile")
-                        .font(.system(size: 28, weight: .bold))
-                    Text("Help us personalize your experience")
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 20)
-                
-                // Avatar Selection
-                VStack(spacing: 16) {
-                    if let profileImage {
-                        profileImage
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 120, height: 120)
-                            .clipShape(Circle())
-                    } else {
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .frame(width: 120, height: 120)
-                            .foregroundStyle(Color(.systemGray4))
-                    }
-                    
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label("Choose Photo", systemImage: "camera.fill")
-                            .font(.subheadline)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(.blue)
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                    }
-                }
-                .padding(.vertical)
-                
-                // Form
-                VStack(spacing: 16) {
-                    // Username (read-only, already set)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Username")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        Text(username)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(.systemGray5))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    
-                    // Full Name
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Full Name")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        TextField("John Doe", text: $fullName)
-                            .textContentType(.name)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .accessibilityLabel("Full Name")
-                            .accessibilityIdentifier("Full Name")
-                    }
-                    
-                    // Gender
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Gender")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        Picker("Gender", selection: $gender) {
-                            ForEach(Gender.allCases, id: \.self) { gender in
-                                Text(gender.displayName).tag(gender)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    
-                    // Birth Year
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Birth Year (Optional)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        TextField("1990", text: $birthYear)
-                            .keyboardType(.numberPad)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        
-                        Text("Used for age-group leaderboards")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    // Weight
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Weight (kg, Optional)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        TextField("70", text: $weightKg)
-                            .keyboardType(.decimalPad)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        
-                        Text("Used for power calculations")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    // Error Message
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .padding(.horizontal, 32)
-                
-                // Complete Button
-                Button(action: completeProfile) {
-                    if isLoading {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Text("Complete Profile")
-                            .font(.headline)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(.blue)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal, 32)
-                .disabled(isLoading)
-                .accessibilityIdentifier("Complete Profile")
-                
+                header
+                avatarSection
+                formSection
+                completeButton
                 Spacer()
             }
         }
@@ -195,9 +54,8 @@ struct ProfileCreationView: View {
         .navigationBarBackButtonHidden()
         .alert("Profile Created!", isPresented: $showSuccess) {
             Button("Get Started") {
-                // Mark user as authenticated and set current user ID
                 appState.isAuthenticated = true
-                appState.currentUserID = userID
+                appState.currentUserId = userId
                 path = NavigationPath()
             }
         } message: {
@@ -207,10 +65,143 @@ struct ProfileCreationView: View {
             Task {
                 if let data = try? await newValue?.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {
-                    profileImage = Image(uiImage: uiImage)
+                    await MainActor.run {
+                        profileUIImage = uiImage
+                    }
                 }
             }
         }
+    }
+    
+    private var header: some View {
+        VStack(spacing: 8) {
+            Text("Complete Your Profile")
+                .font(.system(size: 28, weight: .bold))
+            Text("Help us personalize your experience")
+                .foregroundStyle(.secondary)
+        }
+        .padding(.top, 20)
+    }
+    
+    private var avatarSection: some View {
+        VStack(spacing: 16) {
+            if let profileUIImage {
+                Image(uiImage: profileUIImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 120, height: 120)
+                    .clipShape(Circle())
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .frame(width: 120, height: 120)
+                    .foregroundStyle(Color(.systemGray4))
+            }
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Label("Choose Photo", systemImage: "camera.fill")
+                    .font(.subheadline)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(.blue)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.vertical)
+    }
+    
+    private var formSection: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Username")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(username)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Full Name")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextField("John Doe", text: $fullName)
+                    .textContentType(.name)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .accessibilityLabel("Full Name")
+                    .accessibilityIdentifier("Full Name")
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Gender")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Picker("Gender", selection: $gender) {
+                    ForEach(Gender.allCases, id: \.self) { gender in
+                        Text(gender.displayName).tag(gender)
+                    }
+                }
+                .pickerStyle(.menu)
+                .padding()
+                .background(Color(.systemGray6))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Birth Year (Optional)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextField("1990", text: $birthYear)
+                    .keyboardType(.numberPad)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                Text("Used for age-group leaderboards")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Weight (kg, Optional)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextField("70", text: $weightKg)
+                    .keyboardType(.decimalPad)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                Text("Used for power calculations")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 32)
+    }
+    
+    private var completeButton: some View {
+        Button(action: completeProfile) {
+            if isLoading {
+                ProgressView()
+                    .tint(.white)
+            } else {
+                Text("Complete Profile")
+                    .font(.headline)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(.blue)
+        .foregroundStyle(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 32)
+        .disabled(isLoading)
+        .accessibilityIdentifier("Complete Profile")
     }
     
     // MARK: - Actions
@@ -223,7 +214,7 @@ struct ProfileCreationView: View {
             do {
                 // Create local profile with SwiftData
                 let profile = Profile(
-                    userID: userID,
+                    userId: userId,
                     username: username,
                     email: email,
                     fullName: fullName.isEmpty ? nil : fullName,
@@ -241,7 +232,7 @@ struct ProfileCreationView: View {
                 
                 // Track completion
                 ObservabilityManager.shared.track(event: "profile_created", properties: [
-                    "user_id": userID,
+                    "user_id": userId,
                     "has_full_name": !fullName.isEmpty,
                     "has_birth_year": !birthYear.isEmpty,
                     "has_weight": !weightKg.isEmpty
@@ -264,7 +255,7 @@ struct ProfileCreationView: View {
 #Preview {
     NavigationStack {
         ProfileCreationView(
-            userID: "test-user-id",
+            userId: "test-user-id",
             email: "test@example.com",
             username: "testuser",
             path: .constant(NavigationPath())
@@ -272,4 +263,3 @@ struct ProfileCreationView: View {
     }
     .modelContainer(for: Profile.self, inMemory: true)
 }
-

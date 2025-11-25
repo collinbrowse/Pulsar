@@ -192,7 +192,7 @@ struct ActivityUploadView: View {
     }
     
     private func processFile(_ url: URL) {
-        guard let userID = appState.currentUserID else {
+        guard let userId = appState.currentUserId else {
             errorMessage = "You must be signed in to upload activities"
             return
         }
@@ -208,7 +208,7 @@ struct ActivityUploadView: View {
                 defer { url.stopAccessingSecurityScopedResource() }
                 
                 // Parse the activity
-                let activity = try await activityService.parseActivityFile(from: url, userID: userID)
+                let activity = try await activityService.parseActivityFile(from: url, userId: userId)
                 
                 // Save to SwiftData
                 try await activityService.saveActivity(activity, modelContext: modelContext)

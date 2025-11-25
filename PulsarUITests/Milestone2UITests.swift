@@ -16,6 +16,7 @@ import XCTest
 
 /// Milestone 2 Acceptance Tests
 /// Tests all functionality delivered in Milestone 2: Auth & User Profiles
+@MainActor
 final class Milestone2UITests: XCTestCase {
     
     var app: XCUIApplication!

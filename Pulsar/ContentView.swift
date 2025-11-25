@@ -39,14 +39,52 @@ struct ContentView: View {
 // Placeholder for Profile Tab
 struct ProfileTabView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Query private var profiles: [Profile]
+    
+    var currentProfile: Profile? {
+        guard let userId = appState.currentUserId else { return nil }
+        return profiles.first { $0.userId == userId }
+    }
     
     var body: some View {
         NavigationStack {
             List {
                 Section("Account") {
-                    if let profile = appState.userProfile {
+                    if let profile = currentProfile {
+                        Text("@\(profile.username)")
+                            .font(.headline)
+                        if let fullName = profile.fullName {
+                            Text(fullName)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if let profile = appState.userProfile {
                         Text("@\(profile.username)")
                     }
+                }
+                
+                Section("Preferences") {
+                    Toggle("Use Metric Units", isOn: Binding(
+                        get: { 
+                            currentProfile?.useMetricUnits ?? false
+                        },
+                        set: { newValue in
+                            if let profile = currentProfile {
+                                profile.useMetricUnits = newValue
+                                profile.updatedAt = Date()
+                            } else if let userId = appState.currentUserId {
+                                // Create a new profile if it doesn't exist
+                                let newProfile = Profile(
+                                    userId: userId,
+                                    username: appState.userProfile?.username ?? "user",
+                                    email: "", // Will be updated when profile is synced
+                                    useMetricUnits: newValue
+                                )
+                                modelContext.insert(newProfile)
+                            }
+                            try? modelContext.save()
+                        }
+                    ))
                 }
                 
                 Section {
