@@ -146,8 +146,8 @@ final class ObservabilityManager {
 
 /// Error severity levels for product analytics
 enum ErrorSeverity: String {
-    case low = "low"           // Cosmetic, doesn't block user
-    case medium = "medium"     // Impacts UX but has workaround
-    case high = "high"         // Blocks key functionality
-    case critical = "critical" // App-breaking, requires immediate fix
+    case low           // Cosmetic, doesn't block user
+    case medium        // Impacts UX but has workaround
+    case high          // Blocks key functionality
+    case critical      // App-breaking, requires immediate fix
 }

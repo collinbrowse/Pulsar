@@ -153,16 +153,16 @@ struct FeedCard: View {
                 }
                 .buttonStyle(.plain)
                 
-                Button(action: { showComments.toggle() }) {
+                Button(action: { showComments.toggle() }, label: {
                     Label("\(item.commentsCount)", systemImage: "bubble.left")
-                }
+                })
                 .buttonStyle(.plain)
                 
                 Spacer()
                 
-                Button(action: {}) {
+                Button(action: {}, label: {
                     Image(systemName: "paperplane")
-                }
+                })
                 .buttonStyle(.plain)
             }
             .font(.subheadline)

@@ -36,7 +36,7 @@ struct WelcomeView: View {
             VStack(spacing: 16) {
                 Button(action: {
                     path.append(OnboardingDestination.signUp)
-                }) {
+                }, label: {
                     Text("Create Account")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
@@ -44,12 +44,12 @@ struct WelcomeView: View {
                         .background(.blue)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
+                })
                 .accessibilityIdentifier("Sign Up")
                 
                 Button(action: {
                     path.append(OnboardingDestination.signIn)
-                }) {
+                }, label: {
                     Text("Sign In")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
@@ -57,7 +57,7 @@ struct WelcomeView: View {
                         .background(Color(.systemGray6))
                         .foregroundStyle(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
+                })
                 .accessibilityIdentifier("Sign In")
             }
             .padding(.horizontal, 32)

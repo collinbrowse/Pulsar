@@ -150,13 +150,13 @@ final class TrackPoint {
 // MARK: - Enums
 
 enum ActivityType: String, Codable, CaseIterable, Sendable {
-    case run = "run"
-    case ride = "ride"
-    case walk = "walk"
-    case hike = "hike"
-    case swim = "swim"
-    case ski = "ski"
-    case other = "other"
+    case run
+    case ride
+    case walk
+    case hike
+    case swim
+    case ski
+    case other
     
     var displayName: String {
         switch self {

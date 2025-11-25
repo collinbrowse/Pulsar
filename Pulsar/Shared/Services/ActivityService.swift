@@ -100,8 +100,11 @@ final class ActivityService {
         }
         
         // Calculate metrics
-        let startDate = trackPoints.first!.timestamp
-        let endDate = trackPoints.last!.timestamp
+        guard let firstPoint = trackPoints.first, let lastPoint = trackPoints.last else {
+            throw ActivityServiceError.noTrackPoints
+        }
+        let startDate = firstPoint.timestamp
+        let endDate = lastPoint.timestamp
         let duration = endDate.timeIntervalSince(startDate)
         
         // Calculate distance from track points
@@ -116,10 +119,18 @@ final class ActivityService {
         for (index, point) in trackPoints.enumerated() {
             // Update elevation stats
             if let elevation = point.elevation {
-                if minElevation == nil || elevation < minElevation! {
+                if let currentMin = minElevation {
+                    if elevation < currentMin {
+                        minElevation = elevation
+                    }
+                } else {
                     minElevation = elevation
                 }
-                if maxElevation == nil || elevation > maxElevation! {
+                if let currentMax = maxElevation {
+                    if elevation > currentMax {
+                        maxElevation = elevation
+                    }
+                } else {
                     maxElevation = elevation
                 }
                 
@@ -272,10 +283,18 @@ final class ActivityService {
         
         for (index, point) in allTrackPoints.enumerated() {
             if let elevation = point.elevation {
-                if minElevation == nil || elevation < minElevation! {
+                if let currentMin = minElevation {
+                    if elevation < currentMin {
+                        minElevation = elevation
+                    }
+                } else {
                     minElevation = elevation
                 }
-                if maxElevation == nil || elevation > maxElevation! {
+                if let currentMax = maxElevation {
+                    if elevation > currentMax {
+                        maxElevation = elevation
+                    }
+                } else {
                     maxElevation = elevation
                 }
                 
@@ -308,8 +327,11 @@ final class ActivityService {
         let distance = lap.distanceMeters ?? totalDistance
         let duration = lap.totalTimeSeconds
         
-        let startDate = allTrackPoints.first!.timestamp
-        let endDate = allTrackPoints.last!.timestamp
+        guard let firstPoint = allTrackPoints.first, let lastPoint = allTrackPoints.last else {
+            throw ActivityServiceError.noTrackPoints
+        }
+        let startDate = firstPoint.timestamp
+        let endDate = lastPoint.timestamp
         
         let activityType = determineActivityType(from: fileName, distance: distance)
         
@@ -492,10 +514,18 @@ final class ActivityService {
         
         for (index, point) in trackPoints.enumerated() {
             if let elevation = point.elevation {
-                if minElevation == nil || elevation < minElevation! {
+                if let currentMin = minElevation {
+                    if elevation < currentMin {
+                        minElevation = elevation
+                    }
+                } else {
                     minElevation = elevation
                 }
-                if maxElevation == nil || elevation > maxElevation! {
+                if let currentMax = maxElevation {
+                    if elevation > currentMax {
+                        maxElevation = elevation
+                    }
+                } else {
                     maxElevation = elevation
                 }
                 
@@ -909,8 +939,11 @@ final class ActivityService {
         }
         
         // Recalculate all metrics
-        let startDate = validPoints.first!.timestamp
-        let endDate = validPoints.last!.timestamp
+        guard let firstPoint = validPoints.first, let lastPoint = validPoints.last else {
+            throw ActivityServiceError.noTrackPoints
+        }
+        let startDate = firstPoint.timestamp
+        let endDate = lastPoint.timestamp
         let duration = endDate.timeIntervalSince(startDate)
         
         var totalDistance: Double = 0
@@ -923,10 +956,18 @@ final class ActivityService {
         for (index, point) in validPoints.enumerated() {
             // Update elevation stats
             if let elevation = point.elevation {
-                if minElevation == nil || elevation < minElevation! {
+                if let currentMin = minElevation {
+                    if elevation < currentMin {
+                        minElevation = elevation
+                    }
+                } else {
                     minElevation = elevation
                 }
-                if maxElevation == nil || elevation > maxElevation! {
+                if let currentMax = maxElevation {
+                    if elevation > currentMax {
+                        maxElevation = elevation
+                    }
+                } else {
                     maxElevation = elevation
                 }
                 

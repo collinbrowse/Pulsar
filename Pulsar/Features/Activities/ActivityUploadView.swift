@@ -47,7 +47,7 @@ struct ActivityUploadView: View {
                 // Upload Options
                 VStack(spacing: 16) {
                     // File Upload Button
-                    Button(action: { isImporting = true }) {
+                    Button(action: { isImporting = true }, label: {
                         HStack {
                             Image(systemName: "doc.fill")
                             Text("Choose File")
@@ -61,7 +61,7 @@ struct ActivityUploadView: View {
                         .frame(maxWidth: .infinity)
                         .background(Color(.systemGray6))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                    })
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("Choose File")
                     
@@ -149,9 +149,9 @@ struct ActivityUploadView: View {
             .fileImporter(
                 isPresented: $isImporting,
                 allowedContentTypes: [
-                    UTType(filenameExtension: "gpx")!,
-                    UTType(filenameExtension: "tcx")!,
-                    UTType(filenameExtension: "fit")!
+                    UTType(filenameExtension: "gpx") ?? UTType.data,
+                    UTType(filenameExtension: "tcx") ?? UTType.data,
+                    UTType(filenameExtension: "fit") ?? UTType.data
                 ],
                 allowsMultipleSelection: false
             ) { result in

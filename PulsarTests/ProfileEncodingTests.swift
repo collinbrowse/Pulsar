@@ -33,7 +33,9 @@ struct ProfileEncodingTests {
         encoder.dateEncodingStrategy = .iso8601 // This is what SupabaseClient should use
         
         let jsonData = try encoder.encode(profile)
-        let jsonString = String(data: jsonData, encoding: .utf8)!
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            throw TestError("Failed to convert JSON data to string")
+        }
         
         // Verify the JSON contains ISO 8601 formatted dates (YYYY-MM-DDTHH:MM:SSZ)
         // NOT Unix timestamps like 1698765432 or 1698765432.123
@@ -49,7 +51,7 @@ struct ProfileEncodingTests {
     // TODO: Fix this test - ProfileDTO dates are optional which complicates decoding
     // @Test("ProfileDTO should decode dates from ISO 8601 format")
     @MainActor
-    func _testDateDecodingFormat() throws {
+    func testDateDecodingFormat() throws {
         // JSON with ISO 8601 formatted dates (as PostgreSQL returns)
         let jsonString = """
         {
@@ -64,7 +66,9 @@ struct ProfileEncodingTests {
         }
         """
         
-        let jsonData = jsonString.data(using: .utf8)!
+        guard let jsonData = jsonString.data(using: .utf8) else {
+            throw TestError("Failed to convert JSON string to data")
+        }
         
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601 // This is what SupabaseClient should use
@@ -76,7 +80,9 @@ struct ProfileEncodingTests {
         #expect(profile.createdAt != nil, "Created date should be decoded")
         #expect(profile.updatedAt != nil, "Updated date should be decoded")
         
-        print("✅ Decoded profile with dates: \(profile.createdAt!)")
+        if let createdAt = profile.createdAt {
+            print("✅ Decoded profile with dates: \(createdAt)")
+        }
     }
     
     @Test("ProfileDTO should fail to decode Unix timestamp dates")
@@ -96,7 +102,9 @@ struct ProfileEncodingTests {
         }
         """
         
-        let jsonData = jsonString.data(using: .utf8)!
+        guard let jsonData = jsonString.data(using: .utf8) else {
+            throw TestError("Failed to convert JSON string to data")
+        }
         
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601 // ISO 8601 decoder should reject Unix timestamps
@@ -112,7 +120,7 @@ struct ProfileEncodingTests {
     // TODO: Fix this test - Date precision issues with ISO 8601
     // @Test("ProfileDTO roundtrip encoding/decoding preserves data")
     @MainActor
-    func _testEncodingDecodingRoundtrip() throws {
+    func testEncodingDecodingRoundtrip() throws {
         let originalDate = Date()
         let original = ProfileDTO(
             userId: "roundtrip-test",
@@ -179,7 +187,9 @@ struct ProfileEncodingTests {
         encoder.dateEncodingStrategy = .iso8601
         
         let jsonData = try encoder.encode(profile)
-        let jsonString = String(data: jsonData, encoding: .utf8)!
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            throw TestError("Failed to convert JSON data to string")
+        }
         
         // Verify snake_case keys
         #expect(jsonString.contains("user_id"), "Should use snake_case")
@@ -218,7 +228,9 @@ struct ProfileEncodingTests {
         // NOTE: Missing dateEncodingStrategy = .iso8601
         
         let jsonData = try badEncoder.encode(profile)
-        let jsonString = String(data: jsonData, encoding: .utf8)!
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            throw TestError("Failed to convert JSON data to string")
+        }
         
         // This should produce Unix timestamps (the bug we had)
         #expect(!jsonString.contains("T"), "Without ISO 8601, should not have 'T' separator")

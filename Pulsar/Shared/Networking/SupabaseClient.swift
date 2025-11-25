@@ -96,7 +96,10 @@ final class SupabaseClient {
     
     func signIn(email: String, password: String) async throws -> Session {
         // Build URL with grant_type as query parameter
-        var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true) else {
+            logger.error("❌ SignIn: Failed to create URLComponents")
+            throw NetworkError.invalidResponse
+        }
         components.queryItems = [URLQueryItem(name: "grant_type", value: "password")]
         
         guard let endpoint = components.url else {
@@ -241,7 +244,10 @@ final class SupabaseClient {
         accessToken: String? = nil,
         schema: String = "public"
     ) async throws -> [T] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true) else {
+            logger.error("❌ Fetch: Failed to create URLComponents")
+            throw NetworkError.invalidResponse
+        }
         
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "select", value: select)
@@ -253,10 +259,15 @@ final class SupabaseClient {
         
         components.queryItems = queryItems
         
-        logger.info("📤 Fetch Request: GET \(components.url!.absoluteString)")
+        guard let url = components.url else {
+            logger.error("❌ Fetch: Failed to build URL")
+            throw NetworkError.invalidResponse
+        }
+        
+        logger.info("📤 Fetch Request: GET \(url.absoluteString)")
         logger.debug("   Table: \(table), Filters: \(filter)")
         
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(schema, forHTTPHeaderField: "Accept-Profile")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
@@ -389,7 +400,7 @@ final class SupabaseClient {
         encoder.dateEncodingStrategy = .iso8601 // PostgreSQL expects ISO 8601 timestamps
         request.httpBody = try encoder.encode(data)
         
-        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+        if let httpBody = request.httpBody, let bodyString = String(data: httpBody, encoding: .utf8) {
             logger.debug("   Body: \(bodyString)")
         }
         
@@ -422,7 +433,10 @@ final class SupabaseClient {
         accessToken: String,
         schema: String = "public"
     ) async throws {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true) else {
+            logger.error("❌ Update: Failed to create URLComponents")
+            throw NetworkError.invalidResponse
+        }
         
         var queryItems: [URLQueryItem] = []
         for (key, value) in filter {
@@ -430,10 +444,15 @@ final class SupabaseClient {
         }
         components.queryItems = queryItems
         
-        logger.info("📤 Update Request: PATCH \(components.url!.absoluteString)")
+        guard let url = components.url else {
+            logger.error("❌ Update: Failed to build URL")
+            throw NetworkError.invalidResponse
+        }
+        
+        logger.info("📤 Update Request: PATCH \(url.absoluteString)")
         logger.debug("   Table: \(table), Filters: \(filter)")
         
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(schema, forHTTPHeaderField: "Content-Profile")
@@ -446,7 +465,7 @@ final class SupabaseClient {
         encoder.dateEncodingStrategy = .iso8601 // PostgreSQL expects ISO 8601 timestamps
         request.httpBody = try encoder.encode(data)
         
-        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+        if let httpBody = request.httpBody, let bodyString = String(data: httpBody, encoding: .utf8) {
             logger.debug("   Body: \(bodyString)")
         }
         
@@ -482,7 +501,10 @@ final class SupabaseClient {
         accessToken: String,
         schema: String = "public"
     ) async throws {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true) else {
+            logger.error("❌ Delete: Failed to create URLComponents")
+            throw NetworkError.invalidResponse
+        }
         
         var queryItems: [URLQueryItem] = []
         for (key, value) in filter {
@@ -490,10 +512,15 @@ final class SupabaseClient {
         }
         components.queryItems = queryItems
         
-        logger.info("📤 Delete Request: DELETE \(components.url!.absoluteString)")
+        guard let url = components.url else {
+            logger.error("❌ Delete: Failed to build URL")
+            throw NetworkError.invalidResponse
+        }
+        
+        logger.info("📤 Delete Request: DELETE \(url.absoluteString)")
         logger.debug("   Table: \(table), Filters: \(filter)")
         
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(schema, forHTTPHeaderField: "Content-Profile")

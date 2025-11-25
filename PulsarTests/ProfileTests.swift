@@ -130,7 +130,9 @@ struct ProfileTests {
         }
         """
         
-        let jsonData = json.data(using: .utf8)!
+        guard let jsonData = json.data(using: .utf8) else {
+            throw TestError("Failed to convert JSON string to data")
+        }
         
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
@@ -205,7 +207,9 @@ struct ProfileTests {
         }
         """
         
-        let jsonData = json.data(using: .utf8)!
+        guard let jsonData = json.data(using: .utf8) else {
+            throw TestError("Failed to convert JSON string to data")
+        }
         
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in

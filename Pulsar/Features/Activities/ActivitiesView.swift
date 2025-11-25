@@ -30,9 +30,9 @@ struct ActivitiesView: View {
             .navigationTitle("Activities")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showUpload = true }) {
+                    Button(action: { showUpload = true }, label: {
                         Image(systemName: "plus")
-                    }
+                    })
                     .accessibilityIdentifier("Upload Activity")
                 }
             }

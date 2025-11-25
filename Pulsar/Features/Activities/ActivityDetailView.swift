@@ -281,15 +281,14 @@ struct ActivityMapViewRepresentable: UIViewRepresentable {
         mapView.addOverlay(polyline)
         
         // Add start marker (first valid point)
-        let firstPoint = validPoints.first!
+        guard let firstPoint = validPoints.first else { return mapView }
         let startAnnotation = MKPointAnnotation()
         startAnnotation.coordinate = firstPoint.coordinate
         startAnnotation.title = "Start"
         mapView.addAnnotation(startAnnotation)
         
         // Add end marker (last valid point, only if different from start)
-        if validPoints.count > 1 {
-            let lastPoint = validPoints.last!
+        if validPoints.count > 1, let lastPoint = validPoints.last {
             let endAnnotation = MKPointAnnotation()
             endAnnotation.coordinate = lastPoint.coordinate
             endAnnotation.title = "End"
@@ -469,13 +468,13 @@ struct FullScreenMapView: View {
                     .ignoresSafeArea()
                 
                 // Close button - bigger and positioned in top right
-                Button(action: { dismiss() }) {
+                Button(action: { dismiss() }, label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 32))
                         .foregroundStyle(.white)
                         .background(Color.black.opacity(0.7))
                         .clipShape(Circle())
-                }
+                })
                 .padding(.top, 8)
                 .padding(.trailing, 8)
             }
