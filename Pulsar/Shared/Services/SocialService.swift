@@ -6,14 +6,14 @@
 //
 
 import Foundation
-import SwiftData
 import OSLog
+import SwiftData
 
 private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "SocialService")
 
 /// Service for managing social interactions (follows, kudos, comments)
 @MainActor
-final class SocialService: Sendable {
+final class SocialService {
     static let shared = SocialService()
     
     private init() {}
@@ -373,4 +373,3 @@ enum SocialServiceError: Error, LocalizedError {
         }
     }
 }
-

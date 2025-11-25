@@ -61,7 +61,7 @@ enum AppError: Error {
             return message
             
         // Generic
-        case .unknown(_):
+        case .unknown:
             return "Something went wrong. Please try again."
         }
     }
@@ -266,4 +266,3 @@ extension Error {
         ErrorManager.shared.shouldAutoRecover(self)
     }
 }
-

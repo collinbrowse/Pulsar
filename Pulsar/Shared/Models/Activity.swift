@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import SwiftData
 import MapKit
+import SwiftData
 
 /// Activity model for storing workout data
 @Model
@@ -401,4 +401,3 @@ extension Activity {
         return activity
     }
 }
-

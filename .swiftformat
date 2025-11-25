@@ -1,0 +1,60 @@
+# SwiftFormat Configuration for Pulsar
+
+# Version
+--swiftversion 6.0
+
+# Indentation
+--indent tabs
+--tabwidth 4
+--indentcase false
+
+# Line length
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+
+# Spacing
+--operatorfunc spaced
+--nospaceoperators ...,..<
+--ranges spaced
+--trimwhitespace always
+--insertlines true
+--removelines false
+--enable isEmpty
+--enable sortedImports
+--enable duplicateImports
+
+# Semicolons
+--semicolons never
+
+# Braces
+--allman false
+--closingparen balanced
+--elseposition same-line
+--guardelse auto
+
+# Swift 6 Concurrency
+--enable actorIsolated
+--enable concurrency
+
+# Imports
+--importgrouping testable-bottom
+--importgrouping alphabetical
+
+# Other
+--stripunusedargs always
+--exponentcase lowercase
+--hexliteralcase uppercase
+--octalliteralcase lowercase
+--binaryliteralcase lowercase
+--fractiongrouping disabled
+--exponentgrouping disabled
+--hexgrouping disabled
+--binarygrouping disabled
+
+# Disable rules that conflict with SwiftLint
+--disable trailingCommas
+--disable wrapMultilineStatementBraces
+
+

@@ -41,4 +41,3 @@ struct UserProfile: Sendable, Codable {
     let fullName: String?
     let avatarURL: String?
 }
-

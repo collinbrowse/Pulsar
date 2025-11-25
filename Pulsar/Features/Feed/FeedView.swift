@@ -5,8 +5,8 @@
 //  Created on 10/27/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct FeedView: View {
     @Environment(\.modelContext) private var modelContext
@@ -227,7 +227,7 @@ struct FeedCard: View {
     }
     
     private func formatElevation(_ meters: Double) -> String {
-        return String(format: "%.0f m", meters)
+        String(format: "%.0f m", meters)
     }
 }
 
@@ -337,4 +337,3 @@ struct CommentRow: View {
         .modelContainer(for: Activity.self, inMemory: true)
         .environment(AppState())
 }
-

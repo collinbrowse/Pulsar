@@ -5,13 +5,12 @@
 //  Created on 10/27/25.
 //
 
-import Testing
 import Foundation
 @testable import Pulsar
+import Testing
 
 @Suite("Feature Flags Tests", .serialized)
 struct FeatureFlagsTests {
-    
     @Test("Feature flags should default to disabled")
     @MainActor
     func testDefaultFlags() async throws {
@@ -32,4 +31,3 @@ struct FeatureFlagsTests {
         #expect(flags.premiumAnalyticsEnabled == true)
     }
 }
-

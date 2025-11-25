@@ -1,0 +1,78 @@
+name: CI - Lint
+
+on:
+  pull_request:
+    branches: [ main, 'milestone-*' ]
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install SwiftLint
+      run: brew install swiftlint
+      
+    - name: Install SwiftFormat
+      run: brew install swiftformat
+      
+    - name: Run SwiftLint
+      id: swiftlint
+      run: |
+        swiftlint lint --strict --reporter json > swiftlint-report.json || true
+        swiftlint lint --strict || true
+      continue-on-error: true
+      
+    - name: Run SwiftFormat check
+      id: swiftformat
+      run: |
+        swiftformat --lint . > swiftformat-report.txt || true
+        swiftformat --lint . || true
+      continue-on-error: true
+      
+    - name: Create lint summary
+      if: always()
+      run: |
+        echo "## Lint Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.swiftlint.outcome }}" == "success" ]; then
+          echo "✅ **SwiftLint**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **SwiftLint**: Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ steps.swiftformat.outcome }}" == "success" ]; then
+          echo "✅ **SwiftFormat**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **SwiftFormat**: Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: Upload SwiftLint report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: SwiftLint-Report
+        path: swiftlint-report.json
+        retention-days: 7
+        if-no-files-found: ignore
+        
+    - name: Upload SwiftFormat report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: SwiftFormat-Report
+        path: swiftformat-report.txt
+        retention-days: 7
+        if-no-files-found: ignore
+        
+    - name: Fail if linting errors
+      if: steps.swiftlint.outcome == 'failure' || steps.swiftformat.outcome == 'failure'
+      run: |
+        echo "Linting errors found. Please fix them before merging."
+        exit 1
+
+

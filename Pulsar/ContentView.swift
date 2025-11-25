@@ -5,8 +5,8 @@
 //  Created by Collin Browse on 10/27/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState

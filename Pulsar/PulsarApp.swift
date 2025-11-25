@@ -5,9 +5,9 @@
 //  Created by Collin Browse on 10/27/25.
 //
 
-import SwiftUI
-import SwiftData
 import OSLog
+import SwiftData
+import SwiftUI
 
 private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "App")
 
@@ -23,7 +23,7 @@ struct PulsarApp: App {
             TrackPoint.self,
             Follow.self,
             Kudo.self,
-            Comment.self,
+            Comment.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

@@ -9,7 +9,7 @@ import Foundation
 
 /// Feature flag management for gradual rollout and A/B testing
 @MainActor
-final class FeatureFlags: Sendable {
+final class FeatureFlags {
     static let shared = FeatureFlags()
     
     // MARK: - Analytics & Observability
@@ -46,4 +46,3 @@ final class FeatureFlags: Sendable {
         return defaultValue
     }
 }
-

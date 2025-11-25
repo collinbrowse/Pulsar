@@ -1,0 +1,85 @@
+name: CI - Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - 'CHANGELOG.md'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+
+jobs:
+  docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js (for markdown linting)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install markdownlint
+      run: npm install -g markdownlint-cli
+        
+    - name: Validate markdown syntax
+      run: |
+        markdownlint '**/*.md' --ignore node_modules --ignore .git || true
+        
+    - name: Check for broken internal links
+      run: |
+        echo "Checking for broken internal links..."
+        # Simple check for markdown links
+        find . -name "*.md" -type f | while read file; do
+          # Extract markdown links
+          grep -oE '\[.*\]\([^)]+\)' "$file" | grep -vE '^http' | while read link; do
+            # Extract link target
+            TARGET=$(echo "$link" | sed -E 's/.*\(([^)]+)\).*/\1/')
+            # Check if target exists (relative to file location)
+            if [[ ! "$TARGET" =~ ^http ]] && [[ ! -f "$(dirname "$file")/$TARGET" ]] && [[ ! -f "$TARGET" ]]; then
+              echo "⚠️  Broken link in $file: $link"
+            fi
+          done
+        done || true
+        
+    - name: Generate documentation index
+      run: |
+        echo "# Documentation Index" > docs/INDEX.md
+        echo "" >> docs/INDEX.md
+        echo "Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> docs/INDEX.md
+        echo "" >> docs/INDEX.md
+        echo "## Documentation Files" >> docs/INDEX.md
+        echo "" >> docs/INDEX.md
+        find docs -name "*.md" -type f | sort | while read file; do
+          RELATIVE_PATH=$(echo "$file" | sed 's|^docs/||')
+          TITLE=$(head -1 "$file" | sed 's/^# //')
+          echo "- [${TITLE}](${RELATIVE_PATH})" >> docs/INDEX.md
+        done
+        
+    - name: Validate CHANGELOG format
+      if: hashFiles('CHANGELOG.md') != ''
+      run: |
+        echo "Validating CHANGELOG.md format..."
+        if ! grep -q "## \[Unreleased\]" CHANGELOG.md; then
+          echo "⚠️  CHANGELOG.md should have an [Unreleased] section"
+        fi
+        
+    - name: Upload documentation artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Documentation-Index
+        path: docs/INDEX.md
+        retention-days: 7
+
+

@@ -5,15 +5,14 @@
 //  Created on 10/27/25.
 //
 
-import Testing
 import Foundation
-import SwiftData
 @testable import Pulsar
+import SwiftData
+import Testing
 
 @Suite("Profile Model Tests")
 @MainActor
 struct ProfileTests {
-    
     @Test("Profile should initialize with required fields")
     func testProfileInitialization() {
         let profile = Profile(
@@ -134,7 +133,6 @@ struct ProfileTests {
         let jsonData = json.data(using: .utf8)!
         
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
@@ -210,7 +208,6 @@ struct ProfileTests {
         let jsonData = json.data(using: .utf8)!
         
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
@@ -262,4 +259,3 @@ struct ProfileTests {
         #expect(profile.updatedAt != nil)
     }
 }
-

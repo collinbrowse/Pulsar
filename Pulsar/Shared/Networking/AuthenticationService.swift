@@ -6,14 +6,14 @@
 //
 
 import Foundation
-import SwiftData
 import OSLog
+import SwiftData
 
 private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "Auth")
 
 /// Authentication service handling sign up, sign in, and profile management
 @MainActor
-final class AuthenticationService: Sendable {
+final class AuthenticationService {
     static let shared = AuthenticationService()
     
     private let supabaseClient = SupabaseClient.shared
@@ -272,7 +272,7 @@ final class AuthenticationService: Sendable {
     
     private func validateEmail(_ email: String) throws {
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
         
         guard emailPredicate.evaluate(with: email) else {
             throw AuthError.invalidEmail
@@ -295,7 +295,7 @@ final class AuthenticationService: Sendable {
         }
         
         let usernameRegex = "^[a-zA-Z0-9_-]+$"
-        let usernamePredicate = NSPredicate(format:"SELF MATCHES %@", usernameRegex)
+        let usernamePredicate = NSPredicate(format: "SELF MATCHES %@", usernameRegex)
         
         guard usernamePredicate.evaluate(with: username) else {
             throw AuthError.invalidUsername
@@ -333,4 +333,3 @@ enum AuthError: Error, LocalizedError {
         }
     }
 }
-

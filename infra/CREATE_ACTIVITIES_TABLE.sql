@@ -117,3 +117,5 @@ COMMENT ON COLUMN public.activities.visibility IS 'Who can see this activity: pu
 COMMENT ON COLUMN public.activities.file_url IS 'URL to original uploaded file (GPX/TCX/FIT) in Supabase Storage';
 COMMENT ON COLUMN public.activities.original_file_name IS 'Original filename of uploaded activity file';
 
+
+

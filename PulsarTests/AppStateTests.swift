@@ -5,13 +5,12 @@
 //  Created on 10/27/25.
 //
 
-import Testing
 import Foundation
 @testable import Pulsar
+import Testing
 
 @Suite("App State Tests")
 struct AppStateTests {
-    
     @Test("Initial app state should be unauthenticated")
     @MainActor
     func testInitialState() async throws {
@@ -32,4 +31,3 @@ struct AppStateTests {
         #expect(state.isConfigured == env.isConfigured)
     }
 }
-

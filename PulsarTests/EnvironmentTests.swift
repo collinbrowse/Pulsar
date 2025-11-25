@@ -5,13 +5,12 @@
 //  Created on 10/27/25.
 //
 
-import Testing
 import Foundation
 @testable import Pulsar
+import Testing
 
 @Suite("Environment Configuration Tests")
 struct EnvironmentTests {
-    
     @Test("Environment should be accessible")
     @MainActor
     func testEnvironmentAccess() async throws {
@@ -34,4 +33,3 @@ struct EnvironmentTests {
         #expect(configured == env.isConfigured)
     }
 }
-

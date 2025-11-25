@@ -1,0 +1,55 @@
+{
+  "configurations" : [
+    {
+      "id" : "BEF804512EAFF1D40018966D",
+      "name" : "Configuration 1",
+      "options" : {
+        "commandLineArgumentEntries" : [
+
+        ],
+        "environmentVariableEntries" : [
+
+        ],
+        "targetForVariableExpansion" : {
+          "containerPath" : "container:Pulsar.xcodeproj",
+          "identifier" : "BEF804512EAFF1D40018966D",
+          "name" : "PulsarTests"
+        }
+      },
+      "testTargets" : [
+        {
+          "parallelizable" : true,
+          "target" : {
+            "containerPath" : "container:Pulsar.xcodeproj",
+            "identifier" : "BEF804512EAFF1D40018966D",
+            "name" : "PulsarTests"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultOptions" : {
+    "commandLineArgumentEntries" : [
+
+    ],
+    "environmentVariableEntries" : [
+
+    ],
+    "language" : "en",
+    "region" : "US",
+    "testTimeoutsEnabled" : false
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Pulsar.xcodeproj",
+        "identifier" : "BEF804512EAFF1D40018966D",
+        "name" : "PulsarTests"
+      }
+    }
+  ],
+  "version" : 1
+}
+
+

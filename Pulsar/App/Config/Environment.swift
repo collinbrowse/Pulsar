@@ -42,4 +42,3 @@ struct AppEnvironment: Sendable {
         !supabaseURL.isEmpty && !supabaseAnonKey.isEmpty
     }
 }
-

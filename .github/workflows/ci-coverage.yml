@@ -1,0 +1,123 @@
+name: CI - Coverage Enforcement
+
+on:
+  pull_request:
+    branches: [ main, 'milestone-*' ]
+
+env:
+  COVERAGE_THRESHOLD: 80
+
+jobs:
+  coverage:
+    name: Coverage Check
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Select latest Xcode
+      run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      
+    - name: Show Xcode version
+      run: xcodebuild -version
+      
+    - name: Restore SPM cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+          
+    - name: Get baseline coverage from main
+      id: baseline
+      run: |
+        git fetch origin main:main || true
+        git checkout main || git checkout ${{ github.base_ref }} || true
+        
+        # Try to get baseline coverage if available
+        BASELINE_COVERAGE=$(git log --all --grep="coverage" -1 --pretty=format:"%s" | grep -oE '[0-9]+\.[0-9]+%' | head -1 || echo "")
+        
+        if [ -z "$BASELINE_COVERAGE" ]; then
+          BASELINE_COVERAGE="80.0%"
+        fi
+        
+        echo "baseline=$BASELINE_COVERAGE" >> $GITHUB_OUTPUT
+        echo "📊 Baseline coverage: $BASELINE_COVERAGE"
+        
+    - name: Checkout PR branch
+      run: git checkout ${{ github.head_ref }} || git checkout ${{ github.event.pull_request.head.ref }}
+      
+    - name: Run tests with coverage
+      run: |
+        xcodebuild test \
+          -project Pulsar.xcodeproj \
+          -scheme PulsarTests \
+          -testPlan UnitTests \
+          -destination "platform=iOS Simulator,name=iPhone 16 Pro,OS=26.0" \
+          -enableCodeCoverage YES \
+          -resultBundlePath build/Coverage.xcresult \
+          CODE_SIGNING_ALLOWED=NO \
+          | xcpretty && exit ${PIPESTATUS[0]}
+          
+    - name: Parse coverage
+      id: coverage
+      run: |
+        mkdir -p build/coverage
+        
+        # Generate coverage report
+        xcrun xccov view --report --json build/Coverage.xcresult > build/coverage/coverage.json || true
+        xcrun xccov view --report build/Coverage.xcresult > build/coverage/coverage.txt || true
+        
+        # Extract coverage percentage
+        COVERAGE_PERCENTAGE=$(./scripts/parse-coverage.sh build/Coverage.xcresult ${{ env.COVERAGE_THRESHOLD }} || echo "0")
+        
+        # If script failed, try manual extraction
+        if [ "$COVERAGE_PERCENTAGE" = "0" ]; then
+          COVERAGE_PERCENTAGE=$(grep -E "^\s*[0-9]+\.[0-9]+%" build/coverage/coverage.txt | head -1 | awk '{print $1}' | sed 's/%//' || echo "0")
+        fi
+        
+        echo "coverage=$COVERAGE_PERCENTAGE" >> $GITHUB_OUTPUT
+        echo "📊 Current coverage: ${COVERAGE_PERCENTAGE}%"
+        
+    - name: Compare with baseline
+      run: |
+        CURRENT_COVERAGE="${{ steps.coverage.outputs.coverage }}"
+        BASELINE_COVERAGE="${{ steps.baseline.outputs.baseline }}"
+        THRESHOLD=${{ env.COVERAGE_THRESHOLD }}
+        
+        echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Current Coverage | ${CURRENT_COVERAGE}% |" >> $GITHUB_STEP_SUMMARY
+        echo "| Baseline Coverage | ${BASELINE_COVERAGE} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Threshold | ${THRESHOLD}% |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Convert to integer for comparison
+        CURRENT_INT=$(echo "$CURRENT_COVERAGE" | cut -d'.' -f1)
+        
+        if [ "$CURRENT_INT" -lt "$THRESHOLD" ]; then
+          echo "❌ **Coverage is below threshold**" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage (${CURRENT_COVERAGE}%) is below the required threshold (${THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "✅ **Coverage meets threshold**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Coverage-Report
+        path: |
+          build/coverage/
+          build/Coverage.xcresult
+        retention-days: 30
+
+

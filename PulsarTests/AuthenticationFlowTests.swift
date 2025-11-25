@@ -6,14 +6,13 @@
 //
 
 import Foundation
-import Testing
 @testable import Pulsar
+import Testing
 
 /// Comprehensive tests for authentication flows and profile persistence
 @Suite("Authentication Flow Tests")
 @MainActor
 struct AuthenticationFlowTests {
-    
     @Test("Profile persistence: Upsert should handle new profiles")
     func testUpsertCreatesNewProfile() async throws {
         // This test validates that upsert can create a new profile
@@ -141,7 +140,7 @@ struct AuthenticationFlowTests {
         
         let emptyProfiles: [ProfileDTO] = []
         
-        #expect(emptyProfiles.count == 0)
+        #expect(emptyProfiles.isEmpty)
         #expect(emptyProfiles.isEmpty)
         
         // Application should handle this by:
@@ -231,7 +230,6 @@ struct TestError: Error, CustomStringConvertible {
     }
     
     var description: String {
-        return "Test Error: \(message)"
+        "Test Error: \(message)"
     }
 }
-

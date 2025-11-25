@@ -5,19 +5,19 @@
 //  Created on 10/27/25.
 //
 
-import Foundation
-import SwiftData
-import OSLog
-import MapKit
 import CoreGPX
-import XMLCoder
 import FitDataProtocol
+import Foundation
+import MapKit
+import OSLog
+import SwiftData
+import XMLCoder
 
 private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "ActivityService")
 
 /// Service for parsing, storing, and managing activities
 @MainActor
-final class ActivityService: Sendable {
+final class ActivityService {
     static let shared = ActivityService()
     
     private init() {}
@@ -995,7 +995,7 @@ final class ActivityService: Sendable {
         if let trackPoints = activity.trackPoints, !trackPoints.isEmpty {
             // Check if distance is a suspiciously round number (likely placeholder)
             let distanceKm = activity.distance / 1000
-            let _ = distanceKm.truncatingRemainder(dividingBy: 1) == 0 || 
+            _ = distanceKm.truncatingRemainder(dividingBy: 1) == 0 || 
                     distanceKm.truncatingRemainder(dividingBy: 0.5) == 0
             
             // If distance is exactly 5km, 20km, 40km (old placeholder values), needs recalculation
@@ -1090,4 +1090,3 @@ enum ActivityServiceError: Error, LocalizedError {
         }
     }
 }
-

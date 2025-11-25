@@ -5,9 +5,9 @@
 //  Created on 10/27/25.
 //
 
-import SwiftUI
-import SwiftData
 import PhotosUI
+import SwiftData
+import SwiftUI
 import UIKit
 
 struct ProfileCreationView: View {
@@ -61,7 +61,7 @@ struct ProfileCreationView: View {
         } message: {
             Text("Welcome to Pulsar! Your profile has been created successfully.")
         }
-        .onChange(of: selectedPhoto) { oldValue, newValue in
+        .onChange(of: selectedPhoto) { _, newValue in
             Task {
                 if let data = try? await newValue?.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {

@@ -5,14 +5,13 @@
 //  Created on 10/27/25.
 //
 
-import Testing
 import Foundation
 @testable import Pulsar
+import Testing
 
 @Suite("Supabase Client Tests")
 @MainActor
 struct SupabaseClientTests {
-    
     @Test("Supabase client should be initialized")
     func testClientInitialization() async throws {
         let client = SupabaseClient.shared
@@ -36,4 +35,3 @@ struct SupabaseClientTests {
         #expect(env.supabaseAnonKey.starts(with: "eyJ")) // JWT format
     }
 }
-

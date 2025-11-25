@@ -1,0 +1,159 @@
+name: Nightly UI Tests
+
+on:
+  schedule:
+    # Run every night at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  IOS_SIMULATOR: 'iPhone 16 Pro'
+  IOS_VERSION: '26.0'
+
+jobs:
+  nightly-ui-tests:
+    name: Nightly UI Test Suite
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Select latest Xcode
+      run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      
+    - name: Show Xcode version
+      run: xcodebuild -version
+      
+    - name: List available simulators
+      run: xcrun simctl list devices available
+      
+    - name: Restore SPM cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+          
+    - name: Boot simulator
+      run: |
+        xcrun simctl boot "${{ env.IOS_SIMULATOR }}" || true
+        xcrun simctl bootstatus "${{ env.IOS_SIMULATOR }}"
+        
+    - name: Build app
+      run: |
+        xcodebuild clean build \
+          -project Pulsar.xcodeproj \
+          -scheme Pulsar \
+          -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+          CODE_SIGNING_ALLOWED=NO \
+          -resultBundlePath build/NightlyBuild.xcresult \
+          | xcpretty && exit ${PIPESTATUS[0]}
+          
+    - name: Run full UI test suite
+      run: |
+        xcodebuild test \
+          -project Pulsar.xcodeproj \
+          -scheme PulsarUITests \
+          -testPlan UITests \
+          -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+          -enableCodeCoverage YES \
+          -resultBundlePath build/NightlyUITests.xcresult \
+          CODE_SIGNING_ALLOWED=NO \
+          | xcpretty && exit ${PIPESTATUS[0]}
+      continue-on-error: true
+      
+    - name: Collect UI test screenshots
+      if: always()
+      run: |
+        mkdir -p build/screenshots
+        find ~/Library/Developer/Xcode/DerivedData -name "*.png" -type f -exec cp {} build/screenshots/ \; || true
+        find build -name "*.png" -type f -exec cp {} build/screenshots/ \; || true
+        echo "📸 Collected $(find build/screenshots -name "*.png" | wc -l) screenshots"
+        
+    - name: Generate test report
+      if: always()
+      run: |
+        mkdir -p build/reports
+        
+        # Generate JSON test report
+        xcrun xcresulttool get --format json build/NightlyUITests.xcresult > build/reports/test-report.json || true
+        
+        # Generate coverage report
+        mkdir -p build/coverage
+        xcrun xccov view --report --json build/NightlyUITests.xcresult > build/coverage/coverage.json || true
+        xcrun xccov view --report build/NightlyUITests.xcresult > build/coverage/coverage.txt || true
+        
+        # Extract test summary
+        TEST_COUNT=$(xcrun xcresulttool get --format json build/NightlyUITests.xcresult 2>/dev/null | grep -o '"testCount":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
+        FAILURE_COUNT=$(xcrun xcresulttool get --format json build/NightlyUITests.xcresult 2>/dev/null | grep -o '"failureCount":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
+        
+        echo "## Nightly UI Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Tests Run | ${TEST_COUNT} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Failures | ${FAILURE_COUNT} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$FAILURE_COUNT" -gt "0" ]; then
+          echo "⚠️ **Some tests failed. Please review the test results.**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: NightlyUITestResults
+        path: |
+          build/NightlyUITests.xcresult
+          build/reports/
+        retention-days: 30
+        
+    - name: Upload coverage reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: NightlyCoverageReports
+        path: build/coverage/
+        retention-days: 30
+        
+    - name: Upload UI test screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: NightlyScreenshots
+        path: build/screenshots/
+        retention-days: 7
+        
+    - name: Create test summary issue (if failures)
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = `Nightly UI Tests Failed - ${new Date().toISOString().split('T')[0]}`;
+          const body = `## Nightly UI Test Failure
+          
+          The nightly UI test suite failed. Please review the test results and screenshots.
+          
+          **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          **Test Results**: Available in workflow artifacts
+          
+          **Screenshots**: Available in workflow artifacts
+          
+          Please investigate and fix any failing tests.`;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['bug', 'ci', 'ui-tests']
+          });
+
+

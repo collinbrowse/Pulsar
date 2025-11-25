@@ -20,7 +20,7 @@ final class UnitFormatter {
     /// Defaults to metric (true) if profile not available
     func useMetricUnits(profile: Profile?) -> Bool {
         // Will be implemented once Profile model is updated
-        return profile?.useMetricUnits ?? false
+        profile?.useMetricUnits ?? false
     }
     
     // MARK: - Distance Formatting
@@ -85,4 +85,3 @@ final class UnitFormatter {
         }
     }
 }
-

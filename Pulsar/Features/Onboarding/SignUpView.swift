@@ -277,4 +277,3 @@ struct SignUpView: View {
         SignUpView(path: .constant(NavigationPath()))
     }
 }
-

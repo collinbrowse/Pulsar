@@ -10,7 +10,7 @@ import OSLog
 
 /// Centralized manager for analytics, crash reporting, and logging
 @MainActor
-final class ObservabilityManager: Sendable {
+final class ObservabilityManager {
     static let shared = ObservabilityManager()
     
     private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "Observability")
@@ -151,4 +151,3 @@ enum ErrorSeverity: String {
     case high = "high"         // Blocks key functionality
     case critical = "critical" // App-breaking, requires immediate fix
 }
-

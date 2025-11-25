@@ -6,13 +6,12 @@
 //
 
 import Foundation
-import Testing
 @testable import Pulsar
+import Testing
 
 /// Tests for ProfileDTO JSON encoding/decoding to catch serialization bugs
 @Suite("Profile Encoding/Decoding Tests")
 struct ProfileEncodingTests {
-    
     @Test("ProfileDTO should encode dates in ISO 8601 format")
     @MainActor
     func testDateEncodingFormat() throws {
@@ -68,7 +67,6 @@ struct ProfileEncodingTests {
         let jsonData = jsonString.data(using: .utf8)!
         
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .iso8601 // This is what SupabaseClient should use
         
         let profile = try decoder.decode(ProfileDTO.self, from: jsonData)
@@ -101,12 +99,11 @@ struct ProfileEncodingTests {
         let jsonData = jsonString.data(using: .utf8)!
         
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .iso8601 // ISO 8601 decoder should reject Unix timestamps
         
         // This should throw an error because Unix timestamps aren't valid ISO 8601
         #expect(throws: DecodingError.self) {
-            let _ = try decoder.decode(ProfileDTO.self, from: jsonData)
+            _ = try decoder.decode(ProfileDTO.self, from: jsonData)
         }
         
         print("✅ Correctly rejected Unix timestamp format")
@@ -138,7 +135,6 @@ struct ProfileEncodingTests {
         
         // Decode
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(ProfileDTO.self, from: jsonData)
         
@@ -238,4 +234,3 @@ struct ProfileEncodingTests {
         print("   This is the bug we had - PostgreSQL rejects this format!")
     }
 }
-

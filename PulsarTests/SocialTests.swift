@@ -6,14 +6,13 @@
 //
 
 import Foundation
-import Testing
-import SwiftData
 @testable import Pulsar
+import SwiftData
+import Testing
 
 @Suite("Social Models Tests")
 @MainActor
 struct SocialModelsTests {
-    
     @Test("Follow should initialize correctly")
     func testFollowInitialization() async throws {
         let follow = Follow(
@@ -114,7 +113,6 @@ struct SocialModelsTests {
 @Suite("Feed Item Tests")
 @MainActor
 struct FeedItemTests {
-    
     @Test("Feed item should calculate time ago correctly")
     func testTimeAgoCalculation() async throws {
         let now = Date()
@@ -152,7 +150,6 @@ struct FeedItemTests {
 
 @Suite("Social Service Tests")
 struct SocialServiceTests {
-    
     @Test("Social service error should have descriptive messages")
     func testErrorMessages() async throws {
         let emptyCommentError = SocialServiceError.emptyComment
@@ -162,4 +159,3 @@ struct SocialServiceTests {
         #expect(notFoundError.errorDescription?.contains("not found") == true)
     }
 }
-

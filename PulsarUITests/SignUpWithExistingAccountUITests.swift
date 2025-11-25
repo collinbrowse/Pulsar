@@ -12,7 +12,6 @@ import XCTest
 /// automatically signs the user in instead of showing an error.
 @MainActor
 final class SignUpWithExistingAccountUITests: XCTestCase {
-    
     var app: XCUIApplication!
     
     // Test account credentials (should exist in test database)
@@ -236,4 +235,3 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
         print("✅ Button tapped, processing initiated")
     }
 }
-

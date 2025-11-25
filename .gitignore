@@ -30,6 +30,9 @@ DerivedData/
 *.dSYM.zip
 *.dSYM
 
+## Test results
+*.xcresult
+
 ## Playgrounds
 timeline.xctimeline
 playground.xcworkspace

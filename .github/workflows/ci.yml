@@ -7,24 +7,26 @@ on:
     branches: [ main ]
 
 env:
-  XCODE_VERSION: '26.0'
   IOS_SIMULATOR: 'iPhone 16 Pro'
   IOS_VERSION: '26.0'
 
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: macos-15
+    runs-on: macos-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+    - name: Select latest Xcode
+      run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
       
     - name: Show Xcode version
       run: xcodebuild -version
+      
+    - name: Install xcpretty (if needed)
+      run: gem install xcpretty || true
       
     - name: List available simulators
       run: xcrun simctl list devices available
@@ -45,6 +47,7 @@ jobs:
           -scheme Pulsar \
           -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
           CODE_SIGNING_ALLOWED=NO \
+          -resultBundlePath build/Build.xcresult \
           | xcpretty && exit ${PIPESTATUS[0]}
       continue-on-error: false
       
@@ -53,8 +56,10 @@ jobs:
         xcodebuild test \
           -project Pulsar.xcodeproj \
           -scheme PulsarTests \
+          -testPlan UnitTests \
           -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
           -enableCodeCoverage YES \
+          -resultBundlePath build/UnitTests.xcresult \
           CODE_SIGNING_ALLOWED=NO \
           | xcpretty && exit ${PIPESTATUS[0]}
       continue-on-error: false
@@ -64,26 +69,68 @@ jobs:
         xcodebuild test \
           -project Pulsar.xcodeproj \
           -scheme PulsarUITests \
+          -testPlan UITests \
           -destination "platform=iOS Simulator,name=${{ env.IOS_SIMULATOR }},OS=${{ env.IOS_VERSION }}" \
+          -enableCodeCoverage YES \
+          -resultBundlePath build/UITests.xcresult \
           CODE_SIGNING_ALLOWED=NO \
           | xcpretty && exit ${PIPESTATUS[0]}
       continue-on-error: true
       
+    - name: Collect UI test screenshots
+      if: always()
+      run: |
+        mkdir -p build/screenshots
+        find ~/Library/Developer/Xcode/DerivedData -name "*.png" -type f -exec cp {} build/screenshots/ \; || true
+        find build -name "*.png" -type f -exec cp {} build/screenshots/ \; || true
+      
     - name: Generate code coverage report
       if: success()
       run: |
-        xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult > coverage.json || true
+        mkdir -p build/coverage
+        # Generate JSON coverage report
+        xcrun xccov view --report --json build/UnitTests.xcresult > build/coverage/coverage.json || true
+        xcrun xccov view --report --json build/UITests.xcresult >> build/coverage/coverage.json || true
+        # Generate HTML coverage report
+        xcrun xccov view --report --html build/UnitTests.xcresult > build/coverage/coverage.html || true
+        
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: TestResults
+        path: |
+          build/*.xcresult
+          build/logs/
+        retention-days: 30
         
     - name: Upload coverage reports
       if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: CoverageReports
+        path: |
+          build/coverage/
+        retention-days: 30
+        
+    - name: Upload UI test screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: UITestScreenshots
+        path: build/screenshots/
+        retention-days: 7
+        
+    - name: Upload coverage to Codecov
+      if: success()
       uses: codecov/codecov-action@v4
       with:
-        files: ./coverage.json
+        files: build/coverage/coverage.json
         fail_ci_if_error: false
         
   lint:
     name: Lint Swift Code
-    runs-on: macos-15
+    runs-on: macos-latest
     
     steps:
     - name: Checkout code

@@ -5,9 +5,9 @@
 //  Created on 10/27/25.
 //
 
-import SwiftUI
-import SwiftData
 import MapKit
+import SwiftData
+import SwiftUI
 
 struct ActivityDetailView: View {
     let activity: Activity
@@ -379,7 +379,7 @@ struct ActivityMapViewRepresentable: UIViewRepresentable {
         
         // Don't allow simultaneous recognition with pan/pinch
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            return false
+            false
         }
         
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
@@ -548,4 +548,3 @@ struct DetailRow: View {
         .environment(AppState())
     }
 }
-

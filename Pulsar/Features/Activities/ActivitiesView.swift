@@ -5,9 +5,9 @@
 //  Created on 10/27/25.
 //
 
-import SwiftUI
-import SwiftData
 import MapKit
+import SwiftData
+import SwiftUI
 
 struct ActivitiesView: View {
     @Environment(\.modelContext) private var modelContext
@@ -208,4 +208,3 @@ struct ActivityDetailViewWithLoading: View {
         .modelContainer(for: Activity.self, inMemory: true)
         .environment(AppState())
 }
-

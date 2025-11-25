@@ -189,4 +189,3 @@ struct SignInView: View {
         SignInView(path: .constant(NavigationPath()))
     }
 }
-

@@ -22,3 +22,5 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -d "{\"query\": ${SQL_CONTENT}}"
 
+
+

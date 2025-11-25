@@ -12,7 +12,7 @@ private nonisolated let logger = Logger(subsystem: "com.collinbrowse.Pulsar", ca
 
 /// Supabase API client for backend communication
 @MainActor
-final class SupabaseClient: Sendable {
+final class SupabaseClient {
     static let shared = SupabaseClient()
     
     private let baseURL: URL
@@ -600,4 +600,3 @@ enum NetworkError: Error, LocalizedError {
         }
     }
 }
-

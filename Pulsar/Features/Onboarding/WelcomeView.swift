@@ -81,4 +81,3 @@ enum OnboardingDestination: Hashable {
         WelcomeView(path: .constant(NavigationPath()))
     }
 }
-

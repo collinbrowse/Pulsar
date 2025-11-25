@@ -5,14 +5,13 @@
 //  Created on 10/27/25.
 //
 
-import Testing
 import Foundation
 @testable import Pulsar
+import Testing
 
 @Suite("Authentication Service Tests")
 @MainActor
 struct AuthenticationServiceTests {
-    
     @Test("Authentication service should be singleton")
     func testSingleton() {
         let service1 = AuthenticationService.shared
@@ -147,4 +146,3 @@ struct AuthenticationServiceTests {
         #expect(AuthError.invalidUsername.localizedDescription == "Username can only contain letters, numbers, hyphens, and underscores")
     }
 }
-

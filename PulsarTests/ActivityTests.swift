@@ -6,14 +6,13 @@
 //
 
 import Foundation
-import Testing
-import SwiftData
 @testable import Pulsar
+import SwiftData
+import Testing
 
 @Suite("Activity Model Tests")
 @MainActor
 struct ActivityTests {
-    
     @Test("Activity should initialize with required properties")
     func testActivityInitialization() async throws {
         let startDate = Date()
@@ -128,7 +127,6 @@ struct ActivityTests {
 @Suite("ActivityService Tests")
 @MainActor
 struct ActivityServiceTests {
-    
     @Test("ActivityService should reject unsupported file formats")
     func testUnsupportedFileFormat() async throws {
         let service = ActivityService.shared
@@ -161,4 +159,3 @@ struct ActivityServiceTests {
         #expect(true) // Placeholder until we implement real parsing
     }
 }
-

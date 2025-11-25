@@ -33,4 +33,3 @@ struct OnboardingCoordinator: View {
 #Preview {
     OnboardingCoordinator()
 }
-

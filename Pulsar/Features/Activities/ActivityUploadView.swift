@@ -5,9 +5,9 @@
 //  Created on 10/27/25.
 //
 
+import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
-import SwiftData
 
 struct ActivityUploadView: View {
     @Environment(\.dismiss) private var dismiss
@@ -254,4 +254,3 @@ struct FormatBadge: View {
         .modelContainer(for: Activity.self, inMemory: true)
         .environment(AppState())
 }
-
