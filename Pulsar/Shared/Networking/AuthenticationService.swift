@@ -78,7 +78,7 @@ final class AuthenticationService {
             restoreSession()
         }
         
-        guard let session = currentSession else {
+        guard currentSession != nil else {
             logger.error("❌ No session found when trying to get access token")
             throw AuthError.notAuthenticated
         }

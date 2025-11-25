@@ -10,13 +10,18 @@ import XCTest
 /// UI Tests for Milestone 2 - Onboarding & Authentication Flow
 @MainActor
 final class OnboardingUITests: XCTestCase {
-    var app: XCUIApplication!
+    nonisolated(unsafe) var app: XCUIApplication!
     
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = ["--uitesting"]
-        app.launch()
+        
+        let newApp = MainActor.assumeIsolated {
+            let app = XCUIApplication()
+            app.launchArguments = ["--uitesting"]
+            app.launch()
+            return app
+        }
+        app = newApp
     }
     
     override func tearDownWithError() throws {
@@ -45,7 +50,7 @@ final class OnboardingUITests: XCTestCase {
     
     func testNavigateToSignIn() throws {
         // Tap Sign In button
-        app.buttons["Sign In"].exists
+        XCTAssertTrue(app.buttons["Sign In"].exists)
         app.buttons["Sign In"].tap()
         
         // Verify navigation to sign in screen

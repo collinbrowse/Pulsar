@@ -12,7 +12,7 @@ import XCTest
 /// automatically signs the user in instead of showing an error.
 @MainActor
 final class SignUpWithExistingAccountUITests: XCTestCase {
-    var app: XCUIApplication!
+    nonisolated(unsafe) var app: XCUIApplication!
     
     // Test account credentials (should exist in test database)
     let testEmail = "test@pulsar.app"
@@ -22,9 +22,14 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
     
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = ["--uitesting"]
-        app.launch()
+        
+        let newApp = MainActor.assumeIsolated {
+            let app = XCUIApplication()
+            app.launchArguments = ["--uitesting"]
+            app.launch()
+            return app
+        }
+        app = newApp
     }
     
     override func tearDownWithError() throws {
@@ -33,6 +38,7 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
     
     // MARK: - Main Test
     
+    // swiftlint:disable:next function_body_length
     func testSignUpWithExistingAccountAutoSignsIn() throws {
         // GIVEN: User is on the welcome screen
         XCTAssertTrue(app.staticTexts["Welcome to Pulsar"].exists, "Should be on welcome screen")
@@ -224,10 +230,9 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
         createAccountButton.tap()
         
         // Loading indicator should appear (ProgressView)
-        let loadingIndicator = app.activityIndicators.firstMatch
-        
         // Note: Loading might be fast, so we just check it existed at some point
         // or the button is disabled during loading
+        _ = app.activityIndicators.firstMatch
         sleep(1)
         
         // At minimum, the button text should have changed or button disabled

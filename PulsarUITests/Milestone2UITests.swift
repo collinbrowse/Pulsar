@@ -18,21 +18,32 @@ import XCTest
 /// Tests all functionality delivered in Milestone 2: Auth & User Profiles
 @MainActor
 final class Milestone2UITests: XCTestCase {
-    var app: XCUIApplication!
+    nonisolated(unsafe) var app: XCUIApplication!
     
     override func setUpWithError() throws {
         continueAfterFailure = false
         
-        app = XCUIApplication()
-        app.launchArguments = [
-            "--uitesting",
-            "--reset-user-defaults" // Start fresh for each test
-        ]
-        app.launch()
+        let newApp = MainActor.assumeIsolated {
+            let app = XCUIApplication()
+            app.launchArguments = [
+                "--uitesting",
+                "--reset-user-defaults" // Start fresh for each test
+            ]
+            app.launch()
+            return app
+        }
+        app = newApp
     }
     
     override func tearDownWithError() throws {
-        takeScreenshot(named: "Test End State")
+        // Take screenshot on main actor
+        let screenshot = MainActor.assumeIsolated {
+            XCUIScreen.main.screenshot()
+        }
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "Test End State"
+        attachment.lifetime = .keepAlways
+        add(attachment)
         app = nil
     }
     

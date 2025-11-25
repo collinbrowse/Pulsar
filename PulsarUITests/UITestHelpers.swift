@@ -97,6 +97,7 @@ struct TestUser {
 /// Test scenario helpers
 extension XCTestCase {
     /// Performs a complete sign up flow
+    @MainActor
     func performSignUp(in app: XCUIApplication, user: TestUser, waitForSuccess: Bool = true) {
         app.buttons["Sign Up"].tap()
         
@@ -128,6 +129,7 @@ extension XCTestCase {
     }
     
     /// Performs a complete sign in flow
+    @MainActor
     func performSignIn(in app: XCUIApplication, email: String, password: String, waitForSuccess: Bool = true) {
         app.buttons["Sign In"].tap()
         
@@ -149,6 +151,7 @@ extension XCTestCase {
     }
     
     /// Completes profile creation
+    @MainActor
     func completeProfileCreation(in app: XCUIApplication, username: String? = nil, fullName: String? = nil) {
         if let username = username {
             let usernameField = app.textFields["Username"]
@@ -173,6 +176,7 @@ extension XCTestCase {
 /// Screenshot helpers for debugging failed tests
 extension XCTestCase {
     /// Takes a screenshot and attaches it to the test
+    @MainActor
     func takeScreenshot(named name: String) {
         let screenshot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
