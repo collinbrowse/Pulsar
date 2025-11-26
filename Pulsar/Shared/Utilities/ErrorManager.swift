@@ -115,7 +115,12 @@ final class ErrorManager {
     private init() {}
     
     /// Parse a raw error into an AppError with user-friendly messaging
-    func parseError(_ error: Error) -> AppError {
+    func parseError(_ error: Error) -> AppError { // swiftlint:disable:this cyclomatic_complexity function_body_length
+        // If already an AppError, return it directly
+        if let appError = error as? AppError {
+            return appError
+        }
+        
         let errorString = error.localizedDescription.lowercased()
         
         // Check for Supabase-specific error codes

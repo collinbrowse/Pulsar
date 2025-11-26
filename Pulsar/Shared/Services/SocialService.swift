@@ -5,6 +5,7 @@
 //  Created on 10/27/25.
 //
 
+// swiftlint:disable file_length
 import Foundation
 import OSLog
 import SwiftData
@@ -13,6 +14,7 @@ private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "Soc
 
 /// Service for managing social interactions (follows, kudos, comments)
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SocialService {
     static let shared = SocialService()
     
@@ -46,9 +48,20 @@ final class SocialService {
         modelContext.insert(follow)
         try modelContext.save()
         
-        // TODO: Sync to backend
-        // let dto = follow.toDTO()
-        // try await supabaseClient.insert("follows", data: dto)
+        // Sync to backend
+        do {
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let dto = follow.toDTO()
+            try await SupabaseClient.shared.upsert(
+                table: "follows",
+                data: dto,
+                accessToken: accessToken
+            )
+            logger.info("✅ Follow synced to backend")
+        } catch {
+            // Log error but don't fail - local save succeeded
+            logger.error("❌ Failed to sync follow to backend: \(error.localizedDescription)")
+        }
         
         ObservabilityManager.shared.track(event: "user_followed", properties: [
             "following_id": followingId
@@ -72,12 +85,30 @@ final class SocialService {
         )
         
         let follows = try modelContext.fetch(descriptor)
+        guard let follow = follows.first else {
+            logger.warning("No follow relationship found to unfollow")
+            return
+        }
+        
+        // Delete from backend first (before local delete)
+        do {
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            try await SupabaseClient.shared.delete(
+                table: "follows",
+                filter: ["id": follow.id],
+                accessToken: accessToken
+            )
+            logger.info("✅ Follow deleted from backend")
+        } catch {
+            // Log error but continue with local delete
+            logger.error("❌ Failed to delete follow from backend: \(error.localizedDescription)")
+        }
+        
+        // Delete locally
         for follow in follows {
             modelContext.delete(follow)
         }
         try modelContext.save()
-        
-        // TODO: Sync to backend
         
         ObservabilityManager.shared.track(event: "user_unfollowed", properties: [
             "following_id": followingId
@@ -158,7 +189,20 @@ final class SocialService {
         modelContext.insert(kudo)
         try modelContext.save()
         
-        // TODO: Sync to backend
+        // Sync to backend
+        do {
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let dto = kudo.toDTO()
+            try await SupabaseClient.shared.upsert(
+                table: "kudos",
+                data: dto,
+                accessToken: accessToken
+            )
+            logger.info("✅ Kudo synced to backend")
+        } catch {
+            // Log error but don't fail - local save succeeded
+            logger.error("❌ Failed to sync kudo to backend: \(error.localizedDescription)")
+        }
         
         ObservabilityManager.shared.track(event: "kudo_given", properties: [
             "activity_id": activityId
@@ -182,12 +226,30 @@ final class SocialService {
         )
         
         let kudos = try modelContext.fetch(descriptor)
+        guard let kudo = kudos.first else {
+            logger.warning("No kudo found to remove")
+            return
+        }
+        
+        // Delete from backend first (before local delete)
+        do {
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            try await SupabaseClient.shared.delete(
+                table: "kudos",
+                filter: ["id": kudo.id],
+                accessToken: accessToken
+            )
+            logger.info("✅ Kudo deleted from backend")
+        } catch {
+            // Log error but continue with local delete
+            logger.error("❌ Failed to delete kudo from backend: \(error.localizedDescription)")
+        }
+        
+        // Delete locally
         for kudo in kudos {
             modelContext.delete(kudo)
         }
         try modelContext.save()
-        
-        // TODO: Sync to backend
         
         logger.info("✅ Kudo removed successfully")
     }
@@ -242,7 +304,20 @@ final class SocialService {
         modelContext.insert(comment)
         try modelContext.save()
         
-        // TODO: Sync to backend
+        // Sync to backend
+        do {
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let dto = comment.toDTO()
+            try await SupabaseClient.shared.upsert(
+                table: "comments",
+                data: dto,
+                accessToken: accessToken
+            )
+            logger.info("✅ Comment synced to backend")
+        } catch {
+            // Log error but don't fail - local save succeeded
+            logger.error("❌ Failed to sync comment to backend: \(error.localizedDescription)")
+        }
         
         ObservabilityManager.shared.track(event: "comment_added", properties: [
             "activity_id": activityId,
@@ -286,12 +361,203 @@ final class SocialService {
             throw SocialServiceError.commentNotFound
         }
         
+        // Delete from backend first (before local delete)
+        do {
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            try await SupabaseClient.shared.delete(
+                table: "comments",
+                filter: ["id": comment.id],
+                accessToken: accessToken
+            )
+            logger.info("✅ Comment deleted from backend")
+        } catch {
+            // Log error but continue with local delete
+            logger.error("❌ Failed to delete comment from backend: \(error.localizedDescription)")
+        }
+        
+        // Delete locally
         modelContext.delete(comment)
         try modelContext.save()
         
-        // TODO: Sync to backend
-        
         logger.info("✅ Comment deleted successfully")
+    }
+    
+    // MARK: - Backend Sync
+    
+    /// Sync follows from backend to local storage
+    func syncFollowsFromBackend(
+        for userId: String,
+        modelContext: ModelContext
+    ) async throws {
+        logger.info("🔄 Syncing follows from backend for user: \(userId)")
+        
+        let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+        
+        // Fetch follows from backend where user is the follower
+        let backendFollows: [FollowDTO] = try await SupabaseClient.shared.fetch(
+            from: "follows",
+            select: "id,follower_id,following_id,created_at",
+            filter: ["follower_id": userId],
+            accessToken: accessToken
+        )
+        
+        logger.info("📥 Fetched \(backendFollows.count) follows from backend")
+        
+        // Get existing local follows
+        let localFollows = try modelContext.fetch(
+            FetchDescriptor<Follow>(
+                predicate: #Predicate { follow in
+                    follow.followerId == userId
+                }
+            )
+        )
+        let localFollowIDs = Set(localFollows.map { $0.id })
+        
+        // Merge backend follows with local data
+        for dto in backendFollows {
+            if localFollowIDs.contains(dto.id) {
+                // Already exists locally, skip
+                continue
+            } else {
+                // Create new follow from backend
+                let follow = Follow.fromDTO(dto)
+                modelContext.insert(follow)
+                logger.debug("Inserted follow from backend: \(dto.id)")
+            }
+        }
+        
+        try modelContext.save()
+        logger.info("✅ Follows synced from backend")
+    }
+    
+    /// Sync kudos from backend to local storage
+    func syncKudosFromBackend(
+        for userId: String,
+        modelContext: ModelContext
+    ) async throws {
+        logger.info("🔄 Syncing kudos from backend for user: \(userId)")
+        
+        let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+        
+        // Fetch kudos from backend for user's activities
+        // First, get user's activity IDs
+        let activityDescriptor = FetchDescriptor<Activity>(
+            predicate: #Predicate { activity in
+                activity.userId == userId
+            }
+        )
+        let activities = try modelContext.fetch(activityDescriptor)
+        let activityIDs = activities.map { $0.id }
+        
+        guard !activityIDs.isEmpty else {
+            logger.info("No activities found, skipping kudo sync")
+            return
+        }
+        
+        // Fetch kudos for these activities
+        var allKudos: [KudoDTO] = []
+        for activityId in activityIDs {
+            let kudos: [KudoDTO] = try await SupabaseClient.shared.fetch(
+                from: "kudos",
+                select: "id,user_id,activity_id,created_at",
+                filter: ["activity_id": activityId],
+                accessToken: accessToken
+            )
+            allKudos.append(contentsOf: kudos)
+        }
+        
+        logger.info("📥 Fetched \(allKudos.count) kudos from backend")
+        
+        // Get existing local kudos
+        let localKudos = try modelContext.fetch(
+            FetchDescriptor<Kudo>(
+                predicate: #Predicate { kudo in
+                    activityIDs.contains(kudo.activityId)
+                }
+            )
+        )
+        let localKudoIDs = Set(localKudos.map { $0.id })
+        
+        // Merge backend kudos with local data
+        for dto in allKudos {
+            if localKudoIDs.contains(dto.id) {
+                // Already exists locally, skip
+                continue
+            } else {
+                // Create new kudo from backend
+                let kudo = Kudo.fromDTO(dto)
+                modelContext.insert(kudo)
+                logger.debug("Inserted kudo from backend: \(dto.id)")
+            }
+        }
+        
+        try modelContext.save()
+        logger.info("✅ Kudos synced from backend")
+    }
+    
+    /// Sync comments from backend to local storage
+    func syncCommentsFromBackend(
+        for userId: String,
+        modelContext: ModelContext
+    ) async throws {
+        logger.info("🔄 Syncing comments from backend for user: \(userId)")
+        
+        let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+        
+        // Fetch comments from backend for user's activities
+        // First, get user's activity IDs
+        let activityDescriptor = FetchDescriptor<Activity>(
+            predicate: #Predicate { activity in
+                activity.userId == userId
+            }
+        )
+        let activities = try modelContext.fetch(activityDescriptor)
+        let activityIDs = activities.map { $0.id }
+        
+        guard !activityIDs.isEmpty else {
+            logger.info("No activities found, skipping comment sync")
+            return
+        }
+        
+        // Fetch comments for these activities
+        var allComments: [CommentDTO] = []
+        for activityId in activityIDs {
+            let comments: [CommentDTO] = try await SupabaseClient.shared.fetch(
+                from: "comments",
+                select: "id,user_id,activity_id,text,created_at,updated_at",
+                filter: ["activity_id": activityId],
+                accessToken: accessToken
+            )
+            allComments.append(contentsOf: comments)
+        }
+        
+        logger.info("📥 Fetched \(allComments.count) comments from backend")
+        
+        // Get existing local comments
+        let localComments = try modelContext.fetch(
+            FetchDescriptor<Comment>(
+                predicate: #Predicate { comment in
+                    activityIDs.contains(comment.activityId)
+                }
+            )
+        )
+        let localCommentIDs = Set(localComments.map { $0.id })
+        
+        // Merge backend comments with local data
+        for dto in allComments {
+            if localCommentIDs.contains(dto.id) {
+                // Already exists locally, skip
+                continue
+            } else {
+                // Create new comment from backend
+                let comment = Comment.fromDTO(dto)
+                modelContext.insert(comment)
+                logger.debug("Inserted comment from backend: \(dto.id)")
+            }
+        }
+        
+        try modelContext.save()
+        logger.info("✅ Comments synced from backend")
     }
     
     // MARK: - Feed
@@ -321,11 +587,20 @@ final class SocialService {
         
         let activities = try modelContext.fetch(activityDescriptor)
         
+        // Fetch all profiles and create lookup map (predicates can't use captured variables)
+        let activityUserIds = Set(activities.prefix(50).map { $0.userId })
+        let allProfiles = try modelContext.fetch(FetchDescriptor<Profile>())
+        let profileMap = Dictionary(
+            uniqueKeysWithValues: allProfiles
+                .filter { activityUserIds.contains($0.userId) }
+                .map { ($0.userId, $0) }
+        )
+        
         // Build feed items
         var feedItems: [FeedItem] = []
         for activity in activities.prefix(50) { // Limit to 50 items
-            // TODO: Fetch actual profile from database
-            let profile = Profile(
+            // Use actual profile if found, otherwise create fallback placeholder
+            let profile = profileMap[activity.userId] ?? Profile(
                 userId: activity.userId,
                 username: "athlete\(activity.userId.prefix(8))",
                 email: "athlete@example.com"
