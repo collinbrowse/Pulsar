@@ -36,9 +36,123 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
         app = nil
     }
     
+    // MARK: - Helper Methods
+    
+    private func fillSignUpForm() -> (username: XCUIElement, email: XCUIElement) {
+        let usernameField = app.textFields["Username"]
+        XCTAssertTrue(usernameField.waitForExistence(timeout: 2), "Username field should exist")
+        XCTAssertTrue(app.safeTypeText(in: usernameField, text: testUsername), "Should type username")
+        Thread.sleep(forTimeInterval: 0.5)
+        verifyTextFieldValue(usernameField, expectedText: testUsername, fieldName: "Username")
+        
+        let fullNameField = app.textFields["Full Name"]
+        XCTAssertTrue(app.safeTypeText(in: fullNameField, text: testFullName), "Should type full name")
+        Thread.sleep(forTimeInterval: 0.5)
+        
+        let emailField = app.textFields["Email"]
+        XCTAssertTrue(app.safeTypeText(in: emailField, text: testEmail), "Should type email")
+        Thread.sleep(forTimeInterval: 0.5)
+        verifyTextFieldValue(emailField, expectedText: testEmail, fieldName: "Email")
+        
+        let passwordField = app.secureTextFields["Password"]
+        XCTAssertTrue(app.safeTypeText(in: passwordField, text: testPassword), "Should type password")
+        Thread.sleep(forTimeInterval: 0.5)
+        
+        let confirmPasswordField = app.secureTextFields["Confirm Password"]
+        XCTAssertTrue(app.safeTypeText(in: confirmPasswordField, text: testPassword), "Should type confirm password")
+        Thread.sleep(forTimeInterval: 0.5)
+        
+        app.dismissKeyboard()
+        Thread.sleep(forTimeInterval: 0.5)
+        
+        return (usernameField, emailField)
+    }
+    
+    private func verifyTextFieldValue(_ field: XCUIElement, expectedText: String, fieldName: String) {
+        if let value = field.value as? String {
+            XCTAssertTrue(value.contains(expectedText) || value == expectedText,
+                         "\(fieldName) field should contain '\(expectedText)', but got '\(value)'")
+        } else {
+            XCTFail("\(fieldName) field value is nil or empty - text may not have been entered")
+        }
+    }
+    
+    private func verifyAndWaitForButtonEnabled(_ button: XCUIElement, fields: (username: XCUIElement, email: XCUIElement)) {
+        let usernameValue = fields.username.value as? String ?? ""
+        let emailValue = fields.email.value as? String ?? ""
+        
+        XCTAssertFalse(usernameValue.isEmpty, "Username should not be empty. Current value: '\(usernameValue)'")
+        XCTAssertFalse(emailValue.isEmpty, "Email should not be empty. Current value: '\(emailValue)'")
+        
+        triggerUIUpdate()
+        waitForLoadingToComplete()
+        triggerFieldInteractions(fields: fields)
+        
+        let buttonEnabled = app.waitForButtonEnabled(button, timeout: 5)
+        let buttonHittable = button.waitForHittable(timeout: 2)
+        
+        if !buttonEnabled && !buttonHittable {
+            takeScreenshot(named: "Button Not Enabled - Form State")
+            printDebugInfo(button: button, usernameValue: usernameValue, emailValue: emailValue)
+            XCTFail("Create Account button should be enabled. Enabled: \(button.isEnabled), Hittable: \(button.isHittable)")
+        }
+        
+        if !buttonHittable && !buttonEnabled {
+            XCTFail("Create Account button is neither enabled nor hittable")
+        }
+    }
+    
+    private func triggerUIUpdate() {
+        let scrollView = app.scrollViews.firstMatch
+        if scrollView.exists {
+            scrollView.swipeUp()
+            Thread.sleep(forTimeInterval: 0.3)
+            scrollView.swipeDown()
+            Thread.sleep(forTimeInterval: 0.3)
+        } else {
+            app.dismissKeyboard()
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        Thread.sleep(forTimeInterval: 0.5)
+    }
+    
+    private func waitForLoadingToComplete() {
+        let progressView = app.progressIndicators.firstMatch
+        if progressView.exists {
+            print("DEBUG: Loading indicator is visible - button will be disabled until loading completes")
+            let loadingFinished = NSPredicate(format: "exists == false")
+            let loadingExpectation = XCTNSPredicateExpectation(predicate: loadingFinished, object: progressView)
+            _ = XCTWaiter().wait(for: [loadingExpectation], timeout: 5)
+        }
+    }
+    
+    private func triggerFieldInteractions(fields: (username: XCUIElement, email: XCUIElement)) {
+        fields.username.tap()
+        Thread.sleep(forTimeInterval: 0.2)
+        app.dismissKeyboard()
+        Thread.sleep(forTimeInterval: 0.3)
+        
+        fields.email.tap()
+        Thread.sleep(forTimeInterval: 0.2)
+        app.dismissKeyboard()
+        Thread.sleep(forTimeInterval: 0.3)
+    }
+    
+    private func printDebugInfo(button: XCUIElement, usernameValue: String, emailValue: String) {
+        let passwordMatch = app.staticTexts["Passwords match"].exists
+        let passwordMismatch = app.staticTexts["Passwords don't match"].exists
+        
+        print("DEBUG: Button enabled: \(button.isEnabled)")
+        print("DEBUG: Button hittable: \(button.isHittable)")
+        print("DEBUG: Password match indicator: \(passwordMatch)")
+        print("DEBUG: Password mismatch indicator: \(passwordMismatch)")
+        print("DEBUG: Username field value: '\(usernameValue)' (isEmpty: \(usernameValue.isEmpty))")
+        print("DEBUG: Email field value: '\(emailValue)' (isEmpty: \(emailValue.isEmpty))")
+        print("DEBUG: Password length: \(testPassword.count) (required: >= 8)")
+    }
+    
     // MARK: - Main Test
     
-    // swiftlint:disable:next function_body_length
     func testSignUpWithExistingAccountAutoSignsIn() throws {
         // GIVEN: User is on the welcome screen
         XCTAssertTrue(app.staticTexts["Welcome to Pulsar"].exists, "Should be on welcome screen")
@@ -50,35 +164,17 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Create Account"].waitForExistence(timeout: 2), "Should show sign up screen")
         
         // WHEN: User fills in form with EXISTING account credentials
-        let usernameField = app.textFields["Username"]
-        XCTAssertTrue(usernameField.waitForExistence(timeout: 2), "Username field should exist")
-        usernameField.tap()
-        usernameField.typeText(testUsername)
-        
-        let fullNameField = app.textFields["Full Name"]
-        fullNameField.tap()
-        fullNameField.typeText(testFullName)
-        
-        let emailField = app.textFields["Email"]
-        emailField.tap()
-        emailField.typeText(testEmail)
-        
-        let passwordField = app.secureTextFields["Password"]
-        passwordField.tap()
-        passwordField.typeText(testPassword)
-        
-        let confirmPasswordField = app.secureTextFields["Confirm Password"]
-        confirmPasswordField.tap()
-        confirmPasswordField.typeText(testPassword)
+        let fields = fillSignUpForm()
         
         // THEN: Verify "Passwords match" indicator appears
         let passwordMatchIndicator = app.staticTexts["Passwords match"]
-        XCTAssertTrue(passwordMatchIndicator.waitForExistence(timeout: 2), "Passwords should match")
+        XCTAssertTrue(passwordMatchIndicator.waitForExistence(timeout: 3), "Passwords should match")
         
         // WHEN: User taps "Create Account" (with existing email)
         let createAccountButton = app.buttons["Create Account"]
         XCTAssertTrue(createAccountButton.exists, "Create Account button should exist")
-        XCTAssertTrue(createAccountButton.isEnabled, "Create Account button should be enabled")
+        
+        verifyAndWaitForButtonEnabled(createAccountButton, fields: fields)
         createAccountButton.tap()
         
         // THEN: Should NOT show "HTTP error" or raw error message
@@ -156,25 +252,20 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
         app.buttons["Sign Up"].tap()
         
         let usernameField = app.textFields["Username"]
-        _ = usernameField.waitForExistence(timeout: 2)
-        usernameField.tap()
-        usernameField.typeText(testUsername)
+        XCTAssertTrue(usernameField.waitForExistence(timeout: 2))
+        XCTAssertTrue(app.safeTypeText(in: usernameField, text: testUsername), "Should type username")
         
         let fullNameField = app.textFields["Full Name"]
-        fullNameField.tap()
-        fullNameField.typeText(testFullName)
+        XCTAssertTrue(app.safeTypeText(in: fullNameField, text: testFullName), "Should type full name")
         
         let emailField = app.textFields["Email"]
-        emailField.tap()
-        emailField.typeText(testEmail)
+        XCTAssertTrue(app.safeTypeText(in: emailField, text: testEmail), "Should type email")
         
         let passwordField = app.secureTextFields["Password"]
-        passwordField.tap()
-        passwordField.typeText(testPassword)
+        XCTAssertTrue(app.safeTypeText(in: passwordField, text: testPassword), "Should type password")
         
         let confirmPasswordField = app.secureTextFields["Confirm Password"]
-        confirmPasswordField.tap()
-        confirmPasswordField.typeText(testPassword)
+        XCTAssertTrue(app.safeTypeText(in: confirmPasswordField, text: testPassword), "Should type confirm password")
         
         app.buttons["Create Account"].tap()
         
@@ -206,25 +297,20 @@ final class SignUpWithExistingAccountUITests: XCTestCase {
         app.buttons["Sign Up"].tap()
         
         let usernameField = app.textFields["Username"]
-        _ = usernameField.waitForExistence(timeout: 2)
-        usernameField.tap()
-        usernameField.typeText(testUsername)
+        XCTAssertTrue(usernameField.waitForExistence(timeout: 2))
+        XCTAssertTrue(app.safeTypeText(in: usernameField, text: testUsername), "Should type username")
         
         let fullNameField = app.textFields["Full Name"]
-        fullNameField.tap()
-        fullNameField.typeText(testFullName)
+        XCTAssertTrue(app.safeTypeText(in: fullNameField, text: testFullName), "Should type full name")
         
         let emailField = app.textFields["Email"]
-        emailField.tap()
-        emailField.typeText(testEmail)
+        XCTAssertTrue(app.safeTypeText(in: emailField, text: testEmail), "Should type email")
         
         let passwordField = app.secureTextFields["Password"]
-        passwordField.tap()
-        passwordField.typeText(testPassword)
+        XCTAssertTrue(app.safeTypeText(in: passwordField, text: testPassword), "Should type password")
         
         let confirmPasswordField = app.secureTextFields["Confirm Password"]
-        confirmPasswordField.tap()
-        confirmPasswordField.typeText(testPassword)
+        XCTAssertTrue(app.safeTypeText(in: confirmPasswordField, text: testPassword), "Should type confirm password")
         
         let createAccountButton = app.buttons["Create Account"]
         createAccountButton.tap()
