@@ -210,3 +210,28 @@ Check that:
 1. Test files are in the correct directories (`PulsarTests/` or `PulsarUITests/`)
 2. Test files are added to the correct test target in Xcode
 3. Test methods are properly marked with `@Test` (Swift Testing) or `func test...()` (XCTest)
+
+## Test File SwiftLint Exceptions
+
+Comprehensive test files may legitimately exceed normal SwiftLint limits. When justified, use file-level disable comments:
+
+```swift
+// swiftlint:disable file_length type_body_length
+// Justification: Comprehensive test suite requires extensive coverage
+@Suite("ActivityService Tests")
+struct ActivityServiceTests {
+    // 500+ lines of comprehensive tests
+}
+```
+
+**Acceptable exceptions for test files:**
+- **File length** (500+ lines for comprehensive suites)
+- **Type body length** (300+ lines for test structs)
+- **Function complexity** (helper functions with multiple strategies)
+- **Function body length** (test setup methods, comprehensive test cases)
+
+**Guidelines:**
+- Always document the justification in a comment
+- Use file-level disables at the top of the file
+- Only disable rules that are actually violated
+- Prefer refactoring when possible, but accept exceptions for comprehensive test coverage

@@ -45,3 +45,7 @@ echo "  git add SomeFile.swift"
 echo "  git commit -m 'test: verify hook works'"
 echo ""
 
+
+
+
+

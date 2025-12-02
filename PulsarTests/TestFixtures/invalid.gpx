@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Pulsar Test Fixture">
+  <trk>
+    <name>Invalid Test Run</name>
+    <trkseg>
+      <!-- Missing coordinates - invalid track point -->
+      <trkpt>
+        <ele>10.0</ele>
+        <time>2025-01-01T12:00:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
+
+
+

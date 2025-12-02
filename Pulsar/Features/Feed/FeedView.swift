@@ -44,7 +44,8 @@ struct FeedView: View {
             Text("Follow other athletes to see their activities here")
         } actions: {
             Button("Find Athletes") {
-                // TODO: Navigate to user search
+                // swiftlint:disable:next todo
+                // TODO: Navigate to user search (planned for future milestone)
             }
             .buttonStyle(.borderedProminent)
         }
@@ -88,6 +89,8 @@ struct FeedCard: View {
     @State private var hasKudoed: Bool
     @State private var kudosCount: Int
     @State private var showComments = false
+    @State private var errorMessage: String?
+    @State private var showError = false
     
     private let socialService = SocialService.shared
     
@@ -176,10 +179,23 @@ struct FeedCard: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 5)
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) {
+                errorMessage = nil
+            }
+        } message: {
+            if let errorMessage {
+                Text(errorMessage)
+            }
+        }
     }
     
     private func toggleKudo() {
         guard let userId = appState.currentUserId else { return }
+        
+        // Store original state for potential revert
+        let originalHasKudoed = hasKudoed
+        let originalKudosCount = kudosCount
         
         Task {
             do {
@@ -205,7 +221,15 @@ struct FeedCard: View {
                     }
                 }
             } catch {
-                print("Error toggling kudo: \(error)")
+                // Use ErrorManager for user-friendly error message
+                ErrorManager.shared.logError(error, context: "Toggle Kudo")
+                await MainActor.run {
+                    // Revert UI state on error
+                    hasKudoed = originalHasKudoed
+                    kudosCount = originalKudosCount
+                    errorMessage = error.userMessage
+                    showError = true
+                }
             }
         }
     }
@@ -241,6 +265,8 @@ struct CommentSection: View {
     
     @State private var comments: [Comment] = []
     @State private var newCommentText = ""
+    @State private var errorMessage: String?
+    @State private var showError = false
     
     private let socialService = SocialService.shared
     
@@ -269,25 +295,37 @@ struct CommentSection: View {
         .task {
             loadComments()
         }
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) {
+                errorMessage = nil
+            }
+        } message: {
+            if let errorMessage {
+                Text(errorMessage)
+            }
+        }
     }
     
     private func loadComments() {
         do {
             comments = try socialService.getComments(activityId: activityId, modelContext: modelContext)
         } catch {
-            print("Error loading comments: \(error)")
+            ErrorManager.shared.logError(error, context: "Load Comments")
+            errorMessage = error.userMessage
+            showError = true
         }
     }
     
     private func postComment() {
         guard let userId = appState.currentUserId else { return }
         
+        let commentText = newCommentText
         Task {
             do {
                 try await socialService.addComment(
                     userId: userId,
                     activityId: activityId,
-                    text: newCommentText,
+                    text: commentText,
                     modelContext: modelContext
                 )
                 
@@ -296,7 +334,13 @@ struct CommentSection: View {
                     loadComments()
                 }
             } catch {
-                print("Error posting comment: \(error)")
+                // Use ErrorManager for user-friendly error message
+                ErrorManager.shared.logError(error, context: "Post Comment")
+                await MainActor.run {
+                    errorMessage = error.userMessage
+                    showError = true
+                    // Don't clear comment text on error - user can retry
+                }
             }
         }
     }

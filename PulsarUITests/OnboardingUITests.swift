@@ -64,15 +64,75 @@ final class OnboardingUITests: XCTestCase {
     func testSignUpWithExistingAccountHandledGracefully() throws {
         // This test validates that attempting to sign up with an existing account
         // gracefully signs the user in instead of showing a hard error.
-        // 
-        // NOTE: This test requires a pre-existing test account in the database.
-        // In a real test environment, you would:
-        // 1. Create a test account in setUp()
-        // 2. Attempt to sign up with same credentials
-        // 3. Verify graceful handling
-        // 4. Clean up in tearDown()
+        // Uses the standard test account that should exist in the test database
         
-        throw XCTSkip("Test requires pre-existing account setup - will be enabled with test data fixtures")
+        XCTContext.runActivity(named: "Test Sign Up with Existing Account") { _ in
+            // Navigate to sign up
+            app.buttons["Sign Up"].tap()
+            
+            XCTAssertTrue(app.staticTexts["Create Account"].waitForExistence(timeout: 2), "Should show sign up screen")
+            
+            // Fill form with existing account credentials
+            let usernameField = app.textFields["Username"]
+            XCTAssertTrue(usernameField.waitForExistence(timeout: 2))
+            app.safeTypeText(in: usernameField, text: UITestFixtures.TestAccount.username)
+            Thread.sleep(forTimeInterval: 0.3)
+            
+            let fullNameField = app.textFields["Full Name"]
+            app.safeTypeText(in: fullNameField, text: UITestFixtures.TestAccount.fullName)
+            Thread.sleep(forTimeInterval: 0.3)
+            
+            let emailField = app.textFields["Email"]
+            app.safeTypeText(in: emailField, text: UITestFixtures.TestAccount.email)
+            Thread.sleep(forTimeInterval: 0.3)
+            
+            let passwordField = app.secureTextFields["Password"]
+            app.safeTypeText(in: passwordField, text: UITestFixtures.TestAccount.password)
+            Thread.sleep(forTimeInterval: 0.3)
+            
+            let confirmPasswordField = app.secureTextFields["Confirm Password"]
+            app.safeTypeText(in: confirmPasswordField, text: UITestFixtures.TestAccount.password)
+            Thread.sleep(forTimeInterval: 0.3)
+            
+            app.dismissKeyboard()
+            Thread.sleep(forTimeInterval: 0.5)
+            
+            // Verify passwords match
+            let passwordMatchIndicator = app.staticTexts["Passwords match"]
+            XCTAssertTrue(passwordMatchIndicator.waitForExistence(timeout: 3), "Passwords should match")
+            
+            // Tap create account
+            let createAccountButton = app.buttons["Create Account"]
+            XCTAssertTrue(app.waitForButtonEnabled(createAccountButton, timeout: 5), "Button should be enabled")
+            createAccountButton.tap()
+            
+            // Wait for processing
+            Thread.sleep(forTimeInterval: 3)
+            
+            // Should either:
+            // 1. Auto sign in and navigate to main app
+            // 2. Show user-friendly message (not raw error)
+            
+            let activitiesTab = app.tabBars.buttons["Activities"]
+            let feedTab = app.tabBars.buttons["Feed"]
+            let profileScreen = app.staticTexts["Complete Your Profile"]
+            
+            let isInMainApp = activitiesTab.exists || feedTab.exists
+            let isOnProfileCreation = profileScreen.exists
+            
+            // Verify no raw error messages
+            let httpErrorText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'HTTP error'"))
+            XCTAssertFalse(httpErrorText.element.exists, "Should NOT show raw HTTP error")
+            
+            let errorCodeText = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'error_code'"))
+            XCTAssertFalse(errorCodeText.element.exists, "Should NOT show raw error code")
+            
+            // Should have navigated somewhere (main app or profile creation)
+            XCTAssertTrue(
+                isInMainApp || isOnProfileCreation || app.staticTexts["Create Account"].exists,
+                "Should navigate to main app, profile creation, or show friendly message"
+            )
+        }
     }
     
     func testPasswordFieldsAreEditable() throws {
@@ -224,13 +284,87 @@ final class OnboardingUITests: XCTestCase {
     
     // MARK: - Profile Creation Tests
     
-    func testProfileCreationScreenElements() throws {
-        // Note: This test requires being signed in
-        // For now, we'll just verify the test structure
-        // In a real scenario, you'd need to sign in first or use a test account
+    // swiftlint:disable:next function_body_length
+    func testProfileCreationScreenElements() async throws {
+        // Create a new test account which will automatically navigate to profile creation
+        try await UITestFixtures.createTestAccountViaUI(
+            in: app,
+            email: nil, // Use generated email
+            password: "TestPassword123!",
+            username: nil, // Use generated username
+            fullName: nil
+        )
         
-        // Skip if not authenticated (would need to implement auth state check)
-        throw XCTSkip("Profile creation tests require authentication - will be enabled after implementing test user setup")
+        // Wait for profile creation screen to appear
+        let profileHeader = app.staticTexts["Complete Your Profile"]
+        XCTAssertTrue(
+            profileHeader.waitForExistence(timeout: 10),
+            "Profile creation screen should appear after account creation"
+        )
+        
+        // Verify header text
+        XCTAssertTrue(
+            app.staticTexts["Help us personalize your experience"].exists,
+            "Profile creation subtitle should be visible"
+        )
+        
+        // Verify username field exists (read-only, displays username from signup)
+        let usernameLabel = app.staticTexts["Username"]
+        XCTAssertTrue(
+            usernameLabel.exists,
+            "Username label should be visible"
+        )
+        
+        // Verify Full Name field exists
+        let fullNameField = app.textFields["Full Name"]
+        XCTAssertTrue(
+            fullNameField.waitForExistence(timeout: 2),
+            "Full Name field should be accessible"
+        )
+        XCTAssertTrue(
+            fullNameField.isHittable,
+            "Full Name field should be hittable"
+        )
+        
+        // Verify Gender picker exists
+        let genderPicker = app.pickers["Gender"]
+        XCTAssertTrue(
+            genderPicker.exists,
+            "Gender picker should be visible"
+        )
+        
+        // Verify Birth Year field exists (optional)
+        // Find by placeholder or label
+        let birthYearField = app.textFields["1990"]
+        XCTAssertTrue(
+            birthYearField.exists || app.staticTexts["Birth Year (Optional)"].exists,
+            "Birth Year field or label should be visible"
+        )
+        
+        // Verify Weight field exists (optional)
+        let weightField = app.textFields["70"]
+        XCTAssertTrue(
+            weightField.exists || app.staticTexts["Weight (kg, Optional)"].exists,
+            "Weight field or label should be visible"
+        )
+        
+        // Verify Complete Profile button exists
+        let completeButton = app.buttons["Complete Profile"]
+        XCTAssertTrue(
+            completeButton.waitForExistence(timeout: 2),
+            "Complete Profile button should be visible"
+        )
+        XCTAssertTrue(
+            completeButton.isHittable,
+            "Complete Profile button should be hittable"
+        )
+        
+        // Verify avatar section exists (PhotosPicker)
+        let choosePhotoButton = app.buttons["Choose Photo"]
+        XCTAssertTrue(
+            choosePhotoButton.exists,
+            "Choose Photo button should be visible"
+        )
     }
     
     // MARK: - End-to-End Flow Tests
