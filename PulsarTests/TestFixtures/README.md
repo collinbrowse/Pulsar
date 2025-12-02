@@ -18,3 +18,5 @@ FIT files are binary format and require special tools to create. For testing FIT
 
 For now, FIT file parsing tests will use mock data or skip if FIT files are not available.
 
+
+

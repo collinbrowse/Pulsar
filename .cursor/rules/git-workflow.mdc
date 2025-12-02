@@ -1,0 +1,458 @@
+---
+description: Git workflow, branching strategy, and commit practices for Pulsar
+globs: **/*
+alwaysApply: true
+---
+
+# Git Workflow
+
+Pulsar follows a feature branch workflow with strict code quality gates enforced via pre-commit hooks.
+
+## Branching Strategy
+
+### Feature Branches
+
+**Always create a feature branch before starting work:**
+
+```bash
+# Create and switch to feature branch
+git checkout -b feature/descriptive-name
+
+# Or from develop branch
+git checkout develop
+git pull origin develop
+git checkout -b feature/descriptive-name
+```
+
+**Branch Naming Convention:**
+- Use `feature/[descriptive-name]` format
+- Use kebab-case (lowercase with hyphens)
+- Make names descriptive of the work being done
+- Examples:
+  - `feature/enable-skipped-ui-test`
+  - `feature/complete-test-coverage`
+  - `feature/cloud-sync-social-data`
+
+### Branch Management
+
+**Before Starting Work:**
+1. Check git status: `git status`
+2. Identify any pre-existing modifications
+3. Create feature branch immediately
+4. Stash or commit unrelated changes before starting
+
+**Managing Unrelated Changes:**
+```bash
+# Stash unrelated changes
+git stash push -m "WIP: unrelated changes"
+
+# Or commit unrelated changes first
+git add <unrelated-files>
+git commit -m "chore: unrelated changes"
+
+# Then create feature branch
+git checkout -b feature/new-work
+```
+
+## Pre-Commit Hooks
+
+### Code Quality Gates
+
+**Pre-commit hooks automatically enforce code quality:**
+- SwiftLint runs on staged files
+- Commits are **blocked** if violations are found
+- Fix violations before attempting to commit
+
+### Pre-Commit Workflow
+
+1. **Stage your changes:**
+   ```bash
+   git add <files>
+   ```
+
+2. **Verify what's staged:**
+   ```bash
+   git diff --cached --name-only
+   ```
+
+3. **Run SwiftLint manually (optional but recommended):**
+   ```bash
+   swiftlint
+   # Or for auto-fixable issues:
+   swiftlint --fix
+   ```
+
+4. **Attempt commit:**
+   ```bash
+   git commit -m "feat: your message"
+   ```
+
+5. **If hook blocks commit:**
+   - Fix violations
+   - Re-run SwiftLint
+   - Attempt commit again
+
+### Staging Discipline
+
+**Only stage files relevant to the current feature:**
+
+```bash
+# Review what's staged
+git diff --cached --name-only
+
+# Unstage unrelated files
+git reset HEAD <file>
+
+# Stage only relevant files
+git add path/to/relevant/file.swift
+```
+
+**Key Principles:**
+- Only stage files that are part of the current feature
+- Use `git stash` for unrelated changes
+- Verify staged files with `git diff --cached` before committing
+- Avoid committing documentation, CI configs, or other unrelated changes in feature commits
+
+## Commit Messages
+
+### Semantic Commit Format
+
+**Follow semantic commit message format:**
+
+```
+<type>: <brief summary>
+
+<detailed description with bullet points>
+
+- Phase 1: Description of phase 1 changes
+- Phase 2: Description of phase 2 changes
+- Additional context or notes
+```
+
+### Commit Types
+
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `chore:` - Maintenance tasks, dependencies, configs
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Test additions or changes
+- `style:` - Code style changes (formatting, whitespace)
+
+### Commit Message Examples
+
+**Good: Simple feature**
+```
+feat: enable skipped UI test for profile creation
+
+- Remove XCTSkip from testProfileCreationScreenElements
+- Use UITestFixtures.signInTestAccountViaUI() for authentication
+- Verify all profile form elements exist
+- Update SKIPPED_TESTS.md to mark test as enabled
+```
+
+**Good: Multi-phase feature**
+```
+feat: complete immediate and short-term next steps
+
+Phase 1: Enable Skipped UI Test
+- Unskip testProfileCreationScreenElements using UITestFixtures
+- Add authentication setup before test execution
+- Verify all profile form elements
+
+Phase 2: Complete Test Coverage
+- Add ErrorManagerTests.swift with 15+ test methods
+- Add UnitFormatterTests.swift with 12+ test methods
+- Cover all error scenarios and formatting edge cases
+
+Phase 3: Feed Content Implementation
+- Fix getFeed to fetch real Profile objects from SwiftData
+- Replace placeholder profiles with actual data
+- Handle missing profiles gracefully
+
+Phase 4: Cloud Sync for Social Data
+- Implement backend sync for follows, kudos, comments
+- Add sync methods: syncFollowsFromBackend, syncKudosFromBackend, syncCommentsFromBackend
+- Update existing methods to sync after local operations
+
+Phase 5: Social UI Integration Verification
+- Add ErrorManager for user-friendly error messages
+- Implement error alerts in FeedView
+- Verify kudo and comment functionality
+```
+
+**Bad: Vague or incomplete**
+```
+fix: stuff
+```
+
+**Bad: Missing details**
+```
+feat: add tests
+```
+
+## Development Workflow
+
+### Before Starting Implementation
+
+1. **Check git status:**
+   ```bash
+   git status
+   ```
+
+2. **Create feature branch:**
+   ```bash
+   git checkout -b feature/descriptive-name
+   ```
+
+3. **Stash or commit unrelated changes:**
+   ```bash
+   git stash push -m "WIP: unrelated changes"
+   ```
+
+### During Implementation
+
+1. **Run SwiftLint after major changes:**
+   ```bash
+   swiftlint
+   swiftlint --fix  # For auto-fixable issues
+   ```
+
+2. **Fix violations incrementally:**
+   - Don't wait until commit time
+   - Fix violations as you encounter them
+   - Test frequently to catch issues early
+
+3. **Stage files as you complete them:**
+   ```bash
+   git add path/to/completed/file.swift
+   ```
+
+### Before Committing
+
+**Complete this checklist:**
+
+- [ ] Created feature branch
+- [ ] Only relevant files staged (`git diff --cached --name-only`)
+- [ ] SwiftLint passes on staged files (`swiftlint`)
+- [ ] All tests pass (run test suite)
+- [ ] Build succeeds (`xcodebuild build`)
+- [ ] Commit message follows semantic format
+- [ ] Commit message includes detailed description
+- [ ] No unrelated changes included
+
+### Committing Changes
+
+1. **Review staged files:**
+   ```bash
+   git diff --cached --name-only
+   ```
+
+2. **Unstage unrelated files if needed:**
+   ```bash
+   git reset HEAD <file>
+   ```
+
+3. **Write commit message:**
+   ```bash
+   git commit -m "feat: your feature
+
+   Detailed description with phases and bullet points.
+   "
+   ```
+
+4. **If pre-commit hook blocks:**
+   - Fix violations
+   - Re-run SwiftLint
+   - Attempt commit again
+
+### After Committing
+
+1. **Push feature branch:**
+   ```bash
+   git push origin feature/descriptive-name
+   ```
+
+2. **Create Pull Request:**
+   - Target: `develop` branch
+   - Include description of changes
+   - Reference related issues
+   - Wait for CI/CD to pass
+
+3. **Address review feedback:**
+   - Make requested changes
+   - Ensure CI/CD still passes
+   - Update PR as needed
+
+## Pull Request Process
+
+### PR Requirements
+
+- **Target branch:** `develop`
+- **Description:** Detailed explanation of changes
+- **CI/CD:** All checks must pass
+- **Code review:** Address feedback before merging
+
+### PR Description Template
+
+```markdown
+## Overview
+Brief description of what this PR does.
+
+## Changes
+- Change 1
+- Change 2
+- Change 3
+
+## Testing
+- [ ] Unit tests pass
+- [ ] UI tests pass
+- [ ] Manual testing completed
+- [ ] Test coverage maintained
+
+## Related Issues
+Closes #123
+```
+
+## Common Workflow Scenarios
+
+### Scenario 1: Starting New Feature
+
+```bash
+# 1. Check current status
+git status
+
+# 2. Create feature branch
+git checkout -b feature/new-feature
+
+# 3. Start implementing
+# ... make changes ...
+
+# 4. Stage and commit
+git add <files>
+git commit -m "feat: new feature"
+```
+
+### Scenario 2: Unrelated Changes Exist
+
+```bash
+# 1. Check status
+git status
+
+# 2. Stash unrelated changes
+git stash push -m "WIP: unrelated work"
+
+# 3. Create feature branch
+git checkout -b feature/new-feature
+
+# 4. Implement feature
+# ... make changes ...
+
+# 5. Commit feature
+git add <files>
+git commit -m "feat: new feature"
+
+# 6. Later, restore stashed changes
+git stash pop
+```
+
+### Scenario 3: Pre-Commit Hook Blocks Commit
+
+```bash
+# 1. Attempt commit
+git commit -m "feat: new feature"
+# Hook blocks due to SwiftLint violations
+
+# 2. Fix violations
+swiftlint --fix
+# Manually fix remaining violations
+
+# 3. Verify fixes
+swiftlint
+
+# 4. Attempt commit again
+git commit -m "feat: new feature"
+```
+
+### Scenario 4: Accidentally Staged Unrelated Files
+
+```bash
+# 1. Review staged files
+git diff --cached --name-only
+
+# 2. Unstage unrelated files
+git reset HEAD <unrelated-file>
+
+# 3. Verify staged files
+git diff --cached --name-only
+
+# 4. Commit only relevant files
+git commit -m "feat: new feature"
+```
+
+## Best Practices
+
+### Do's
+
+- ✅ Always create feature branch before starting work
+- ✅ Check git status first to see what's already modified
+- ✅ Run linting early and often during development
+- ✅ Stage files selectively - verify with `git diff --cached`
+- ✅ Write detailed commit messages with phase breakdowns
+- ✅ Test and build before committing
+- ✅ Fix violations incrementally, not all at once
+- ✅ Use `git stash` to manage unrelated changes
+
+### Don'ts
+
+- ❌ Don't commit directly to `develop` or `main`
+- ❌ Don't commit unrelated changes in feature commits
+- ❌ Don't ignore SwiftLint violations
+- ❌ Don't write vague commit messages
+- ❌ Don't skip the pre-commit checklist
+- ❌ Don't commit without running tests
+- ❌ Don't force-commit to bypass hooks
+
+## Integration with CI/CD
+
+- All PRs trigger CI/CD pipeline
+- Tests must pass before merge
+- Code coverage must be maintained
+- SwiftLint checks run in CI
+- Build must succeed in CI environment
+
+## Troubleshooting
+
+### Pre-Commit Hook Not Running
+
+```bash
+# Verify hook exists
+ls -la .git/hooks/pre-commit
+
+# Reinstall hooks if needed
+# (Check project setup documentation)
+```
+
+### SwiftLint Violations in Unstaged Files
+
+- Pre-commit hook only checks staged files
+- Unstaged violations won't block commit
+- Fix unstaged violations in separate commit
+
+### Merge Conflicts
+
+```bash
+# Pull latest develop
+git checkout develop
+git pull origin develop
+
+# Rebase feature branch
+git checkout feature/your-branch
+git rebase develop
+
+# Resolve conflicts
+# ... resolve conflicts ...
+
+# Continue rebase
+git rebase --continue
+```

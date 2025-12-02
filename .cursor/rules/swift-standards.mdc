@@ -494,6 +494,104 @@ extension Activity: Codable {
 }
 ```
 
+### SwiftLint Configuration
+
+Pulsar uses SwiftLint to enforce code quality. Follow these guidelines when working with SwiftLint:
+
+#### Running SwiftLint
+
+- Run `swiftlint` to check for violations
+- Run `swiftlint --fix` to auto-fix simple issues (trailing newlines, whitespace, etc.)
+- Pre-commit hooks automatically run SwiftLint on staged files
+
+#### SwiftLint Disable Comments
+
+When code legitimately exceeds SwiftLint limits, use disable comments appropriately:
+
+**File-Level Disables** (at top of file, after header comment):
+```swift
+// swiftlint:disable file_length
+// swiftlint:disable type_body_length
+```
+
+**Type-Level Disables** (before struct/class):
+```swift
+// swiftlint:disable:next type_body_length
+struct MyTests {
+    // ...
+}
+```
+
+**Function-Level Disables** (on function line):
+```swift
+func complexFunction() { // swiftlint:disable:this cyclomatic_complexity
+    // ...
+}
+```
+
+**Function-Level Disables** (before function, no doc comment between):
+```swift
+// swiftlint:disable:next cyclomatic_complexity function_body_length
+func parseError(_ error: Error) -> AppError {
+    // ...
+}
+```
+
+**Critical Rules:**
+- `// swiftlint:disable:next` must be immediately before the declaration it disables
+- Do NOT place doc comments between the disable comment and the function
+- For function-level disables, use `// swiftlint:disable:this` on the function line, or place `// swiftlint:disable:next` directly before with no doc comment in between
+- File-level disables go at the top of the file (after header comment block)
+
+#### Test File Exceptions
+
+Comprehensive test files may legitimately exceed normal limits. When justified, use file-level disables:
+
+```swift
+// swiftlint:disable file_length type_body_length
+// Justification: Comprehensive test suite requires extensive coverage
+@Suite("ActivityService Tests")
+struct ActivityServiceTests {
+    // 500+ lines of comprehensive tests
+}
+```
+
+**Acceptable exceptions for test files:**
+- File length (500+ lines for comprehensive suites)
+- Type body length (300+ lines for test structs)
+- Function complexity (helper functions with multiple strategies)
+- Always document the justification in a comment
+
+#### Common Violations and Fixes
+
+**Cyclomatic Complexity:**
+- Refactor complex functions into smaller helpers
+- Use disable comments only when refactoring would reduce readability
+
+**Function Body Length:**
+- Extract logic into private helper methods
+- Use disable comments for functions that are inherently long (e.g., parsers, formatters)
+
+**File Length:**
+- Consider splitting large files into logical modules
+- Use disable comments for files that are appropriately organized but long (e.g., comprehensive test suites)
+
+**Orphaned Doc Comment:**
+- Place doc comments after disable comments, or use `// swiftlint:disable:this` on the function line
+- Ensure disable comments are immediately before the declaration
+
+**Superfluous Disable Command:**
+- Only disable rules that are actually violated
+- Remove disable comments when violations are fixed
+
+#### Pre-Commit Hook Integration
+
+- Pre-commit hooks automatically run SwiftLint on staged files
+- Commits are blocked if violations are found
+- Fix violations before attempting to commit
+- Use `swiftlint --fix` for auto-fixable issues
+- The hook only checks staged files, so unstage unrelated changes if needed
+
 ## SwiftUI Best Practices
 
 - Use `@Query` for SwiftData reactive data fetching (default pattern)

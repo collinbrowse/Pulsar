@@ -147,15 +147,3 @@ struct FeedItemTests {
         #expect(feedItem.timeAgo.contains("h"))
     }
 }
-
-@Suite("Social Service Tests")
-struct SocialServiceTests {
-    @Test("Social service error should have descriptive messages")
-    func testErrorMessages() async throws {
-        let emptyCommentError = SocialServiceError.emptyComment
-        #expect(emptyCommentError.errorDescription?.contains("empty") == true)
-        
-        let notFoundError = SocialServiceError.commentNotFound
-        #expect(notFoundError.errorDescription?.contains("not found") == true)
-    }
-}

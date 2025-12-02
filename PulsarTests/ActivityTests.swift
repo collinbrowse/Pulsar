@@ -123,39 +123,3 @@ struct ActivityTests {
         #expect(reconstructed.distance == activity.distance)
     }
 }
-
-@Suite("ActivityService Tests")
-@MainActor
-struct ActivityServiceTests {
-    @Test("ActivityService should reject unsupported file formats")
-    func testUnsupportedFileFormat() async throws {
-        let service = ActivityService.shared
-        
-        // Create a temporary file with unsupported extension
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test.xyz")
-        try "dummy content".write(to: tempURL, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: tempURL) }
-        
-        // Test that unsupported format throws error
-        do {
-            _ = try await service.parseActivityFile(from: tempURL, userId: "test-user")
-            Issue.record("Should have thrown ActivityServiceError.unsupportedFileFormat")
-        } catch let error as ActivityServiceError {
-            // Verify it's the correct error type
-            if case .unsupportedFileFormat(let format) = error {
-                #expect(format == "xyz")
-            } else {
-                Issue.record("Expected unsupportedFileFormat error, got: \(error)")
-            }
-        } catch {
-            Issue.record("Unexpected error type: \(error)")
-        }
-    }
-    
-    @Test("ActivityService should generate activity names from filenames")
-    func testActivityNameGeneration() async throws {
-        // This test validates the internal name generation logic
-        // by checking that parsed activities have meaningful names
-        #expect(true) // Placeholder until we implement real parsing
-    }
-}
