@@ -369,11 +369,17 @@ final class OnboardingUITests: XCTestCase {
     
     // MARK: - End-to-End Flow Tests
     
-    func testCompleteOnboardingFlow() throws {
-        // This would test the complete flow from welcome → sign up → profile creation
-        // Requires email confirmation to be disabled in Supabase
+    func testCompleteOnboardingFlow() async throws {
+        // This would test the complete flow from welcome → sign up → profile creation → main app
+        // Requires email confirmation to be disabled in Supabase OR test accounts to be pre-confirmed
+        // 
+        // To enable:
+        // 1. Check Supabase project settings → Authentication → Email confirmation
+        // 2. If enabled, either disable for test environment OR pre-confirm test accounts
+        // 3. Use UITestFixtures.createTestAccountViaUI() and UITestFixtures.waitForSignIn()
+        // 4. Verify navigation to main app (check for tab bar)
         
-        throw XCTSkip("End-to-end flow test requires backend configuration - will be enabled after Supabase setup")
+        throw XCTSkip("End-to-end flow test requires backend email confirmation configuration - see SKIPPED_TESTS.md for details")
     }
     
     // MARK: - Performance Tests
@@ -425,9 +431,10 @@ final class OnboardingUITests: XCTestCase {
     // MARK: - Error Handling Tests
     
     func testNetworkErrorHandling() throws {
-        // Note: This would require simulating network errors
-        // Could be implemented with a mock server or network conditioning
-        throw XCTSkip("Network error tests require network simulation setup")
+        // Note: Network error testing is better suited for unit tests with mocked services
+        // UI tests should focus on user-facing behavior, not network implementation details
+        // Consider testing error message display in unit tests instead
+        throw XCTSkip("Network error testing better suited for unit tests - see SKIPPED_TESTS.md for details")
     }
     
     func testInvalidCredentialsError() throws {
