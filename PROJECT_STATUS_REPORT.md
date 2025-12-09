@@ -185,7 +185,7 @@ Pulsar is a modern iOS activity tracking application built with Swift 6, SwiftUI
 ## 📊 Test Coverage Status
 
 ### Unit Tests
-**Total:** 192 test methods across 12 test files
+**Total:** 250+ test methods across 15 test files
 
 **Coverage by Component:**
 - ✅ **ActivityService:** 20+ tests (GPX, TCX, FIT parsing, error handling)
@@ -429,9 +429,9 @@ PulsarUITests/
 ### Current Metrics
 - **Total Lines of Code:** ~8,500+
 - **Swift Files:** 45+
-- **Unit Test Files:** 14 files (includes ErrorManagerTests.swift and UnitFormatterTests.swift)
+- **Unit Test Files:** 15 files (includes ErrorManagerTests.swift and UnitFormatterTests.swift)
 - **UI Test Files:** 6 files
-- **Unit Tests:** 250+ test methods (includes ErrorManager and UnitFormatter tests)
+- **Unit Tests:** 250+ test methods (192 XCTest methods + 58+ Swift Testing methods including ErrorManager and UnitFormatter)
 - **UI Tests:** 42 test methods (39 enabled, 3 skipped)
 - **Test Coverage:** >80% for core features
 - **Build Time:** ~12s (clean), <3s (incremental)
