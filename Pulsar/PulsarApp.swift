@@ -60,10 +60,11 @@ struct PulsarApp: App {
         Task { @MainActor in
             AuthenticationService.shared.restoreSessionIfNeeded(appState: appState)
             
-            // Sync activities from backend if user is authenticated
+            // Sync data from backend if user is authenticated
             if appState.isAuthenticated, let userId = appState.currentUserId {
                 let modelContext = sharedModelContainer.mainContext
                 do {
+                    // Sync activities from backend
                     try await ActivityService.shared.syncActivitiesFromBackend(
                         for: userId,
                         modelContext: modelContext,
@@ -75,8 +76,25 @@ struct PulsarApp: App {
                         modelContext: modelContext,
                         appState: appState
                     )
+                    
+                    // Sync social data from backend (follows, kudos, comments)
+                    try await SocialService.shared.syncFollowsFromBackend(
+                        for: userId,
+                        modelContext: modelContext
+                    )
+                    try await SocialService.shared.syncKudosFromBackend(
+                        for: userId,
+                        modelContext: modelContext
+                    )
+                    try await SocialService.shared.syncCommentsFromBackend(
+                        for: userId,
+                        modelContext: modelContext
+                    )
+                    
+                    logger.info("✅ Background sync completed on app launch")
                 } catch {
-                    logger.warning("Failed to sync activities on launch: \(error.localizedDescription)")
+                    logger.warning("⚠️ Failed to sync data on launch: \(error.localizedDescription)")
+                    // Don't block app launch if sync fails - user can still use app
                 }
             }
         }
