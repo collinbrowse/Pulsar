@@ -178,7 +178,7 @@ struct AuthenticationServiceTests {
     }
     
     @Test("signOutAndRedirect should update appState and clear session")
-    func testSignOutAndRedirect() {
+    func testSignOutAndRedirect() async {
         let service = AuthenticationService.shared
         let appState = AppState()
         
@@ -187,8 +187,11 @@ struct AuthenticationServiceTests {
         appState.currentUserId = "test-user-123"
         appState.authErrorMessage = nil
         
-        // Sign out and redirect
+        // Sign out and redirect (updates happen in async Task)
         service.signOutAndRedirect(appState: appState, reason: "Test logout reason")
+        
+        // Wait for async Task to complete
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         
         // Verify appState was updated
         #expect(appState.isAuthenticated == false)
@@ -201,15 +204,18 @@ struct AuthenticationServiceTests {
     }
     
     @Test("signOutAndRedirect should work without error message")
-    func testSignOutAndRedirectWithoutReason() {
+    func testSignOutAndRedirectWithoutReason() async {
         let service = AuthenticationService.shared
         let appState = AppState()
         
         appState.isAuthenticated = true
         appState.currentUserId = "test-user-123"
         
-        // Sign out without reason
+        // Sign out without reason (updates happen in async Task)
         service.signOutAndRedirect(appState: appState, reason: nil)
+        
+        // Wait for async Task to complete
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         
         // Verify appState was updated
         #expect(appState.isAuthenticated == false)
