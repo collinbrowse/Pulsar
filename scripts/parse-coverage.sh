@@ -64,9 +64,3 @@ else
     echo "COVERAGE_PASSED=true" >> $GITHUB_ENV
     exit 0
 fi
-
-
-
-
-
-

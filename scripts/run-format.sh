@@ -29,9 +29,3 @@ else
     echo "Run './scripts/run-format-fix.sh' to auto-fix formatting issues."
     exit 1
 fi
-
-
-
-
-
-

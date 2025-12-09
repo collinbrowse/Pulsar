@@ -749,10 +749,10 @@ All new code must use Swift 6+ features. The project's Swift Language Version is
 
 ## Testing Patterns
 
-**All new features must have complete test coverage following Test-Driven Development (TDD).**
+**All new features and bug fixes must have complete test coverage following Test-Driven Development (TDD).**
 
 - Write tests first, then implement functionality
-- All new code must include corresponding unit tests or UI tests as appropriate
+- All new code and bug fixes must include corresponding unit tests or UI tests as appropriate
 - Test coverage should include happy paths, error cases, and edge cases
 - Services, Models, and ViewModels (if used) should have unit tests
 - UI components should have UI tests for user interactions

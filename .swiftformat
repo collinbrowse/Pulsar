@@ -56,9 +56,3 @@
 # Disable rules that conflict with SwiftLint
 --disable trailingCommas
 --disable wrapMultilineStatementBraces
-
-
-
-
-
-

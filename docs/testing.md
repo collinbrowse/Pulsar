@@ -351,9 +351,3 @@ CI uploads the following test artifacts:
 - [CI Overview](ci_overview.md) - CI/CD setup
 - [Style Guide](style_guide.md) - Code style rules
 - [Team Workflow](TEAM_WORKFLOW.md) - Development workflow
-
-
-
-
-
-

@@ -229,9 +229,3 @@ If coverage is below threshold:
 - [Style Guide](style_guide.md) - Code style rules
 - [Testing Guide](testing.md) - Testing documentation
 - [Team Workflow](TEAM_WORKFLOW.md) - Development workflow
-
-
-
-
-
-

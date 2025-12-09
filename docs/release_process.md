@@ -195,9 +195,3 @@ git push origin main --tags
 - [Deployment Guide](deployment.md) - Deployment process
 - [CI Overview](ci_overview.md) - CI/CD setup
 - [Team Workflow](TEAM_WORKFLOW.md) - Development workflow
-
-
-
-
-
-

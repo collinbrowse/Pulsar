@@ -74,9 +74,3 @@ jobs:
       run: |
         echo "Linting errors found. Please fix them before merging."
         exit 1
-
-
-
-
-
-

@@ -116,10 +116,3 @@ COMMENT ON COLUMN public.activities.geom IS 'PostGIS LineString geometry of the 
 COMMENT ON COLUMN public.activities.visibility IS 'Who can see this activity: public, followers, or private';
 COMMENT ON COLUMN public.activities.file_url IS 'URL to original uploaded file (GPX/TCX/FIT) in Supabase Storage';
 COMMENT ON COLUMN public.activities.original_file_name IS 'Original filename of uploaded activity file';
-
-
-
-
-
-
-

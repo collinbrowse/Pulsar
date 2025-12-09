@@ -108,9 +108,3 @@ Before deploying:
 - [Release Process](release_process.md) - Detailed release workflow
 - [CI Overview](ci_overview.md) - CI/CD setup
 - [Team Workflow](TEAM_WORKFLOW.md) - Development workflow
-
-
-
-
-
-

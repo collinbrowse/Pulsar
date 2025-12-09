@@ -186,9 +186,3 @@ CI workflows use the following environment variables (configured in GitHub Secre
 - [Style Guide](style_guide.md) - Code style and linting rules
 - [Team Workflow](TEAM_WORKFLOW.md) - Development workflow
 - [CI Setup Guide](README_CI_SETUP.md) - Complete CI setup instructions
-
-
-
-
-
-

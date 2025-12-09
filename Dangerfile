@@ -112,9 +112,3 @@ end
 
 # Summary message
 message("PR validated by Danger. Please address any warnings before merging.")
-
-
-
-
-
-

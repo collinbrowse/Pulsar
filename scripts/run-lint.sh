@@ -29,9 +29,3 @@ else
     echo "Run 'swiftlint --fix' to auto-fix some issues."
     exit 1
 fi
-
-
-
-
-
-
