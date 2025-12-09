@@ -198,6 +198,8 @@ Pulsar is a modern iOS activity tracking application built with Swift 6, SwiftUI
 - ✅ **Environment:** 4 tests (configuration)
 - ✅ **FeatureFlags:** 4 tests (feature flag system)
 - ✅ **SupabaseClient:** 6 tests (API client)
+- ✅ **ErrorManager:** 33+ tests (error parsing, user messages, auto-recovery)
+- ✅ **UnitFormatter:** 25+ tests (distance, speed, elevation, pace formatting)
 
 **Test Quality:**
 - ✅ All tests passing
@@ -212,6 +214,9 @@ PulsarTests/
 ├── Services/
 │   ├── ActivityServiceTests.swift (20+ tests)
 │   └── SocialServiceTests.swift (20+ tests)
+├── Utilities/
+│   ├── ErrorManagerTests.swift (33+ tests)
+│   └── UnitFormatterTests.swift (25+ tests)
 ├── ActivityTests.swift (12 tests)
 ├── AppStateTests.swift (4 tests)
 ├── AuthenticationFlowTests.swift (14 tests)
@@ -380,14 +385,14 @@ PulsarUITests/
    - Background sync for offline-first experience
 
 3. **Social UI Integration**
-   - Kudos/comment buttons not wired to UI
-   - Need to implement interaction UI
-   - Real-time updates for social features
+   - ✅ Kudos/comment buttons already wired to UI in FeedView
+   - ✅ Interaction UI already implemented
+   - ⏳ Real-time updates for social features (future enhancement)
 
 4. **Test Coverage Gaps**
-   - ErrorManager has no tests (269 lines)
-   - UnitFormatter has no tests (88 lines)
-   - Some UI tests still skipped (3 tests)
+   - ✅ ErrorManager has comprehensive tests (33+ test methods in ErrorManagerTests.swift)
+   - ✅ UnitFormatter has comprehensive tests (25+ test methods in UnitFormatterTests.swift)
+   - Some UI tests still skipped (2 tests: testCompleteOnboardingFlow, testNetworkErrorHandling)
 
 ### Medium Priority
 1. **Map Visualization Enhancement**
@@ -424,9 +429,9 @@ PulsarUITests/
 ### Current Metrics
 - **Total Lines of Code:** ~8,500+
 - **Swift Files:** 45+
-- **Unit Test Files:** 12 files
+- **Unit Test Files:** 14 files (includes ErrorManagerTests.swift and UnitFormatterTests.swift)
 - **UI Test Files:** 6 files
-- **Unit Tests:** 192 test methods
+- **Unit Tests:** 250+ test methods (includes ErrorManager and UnitFormatter tests)
 - **UI Tests:** 42 test methods (39 enabled, 3 skipped)
 - **Test Coverage:** >80% for core features
 - **Build Time:** ~12s (clean), <3s (incremental)
@@ -459,9 +464,10 @@ Pulsar/
    - Consider manual testing for network errors
 
 2. **Complete Test Coverage**
-   - Add tests for ErrorManager (269 lines, 0% coverage)
-   - Add tests for UnitFormatter (88 lines, 0% coverage)
+   - ✅ ErrorManager tests already exist (33+ test methods)
+   - ✅ UnitFormatter tests already exist (25+ test methods)
    - Verify 80%+ overall coverage threshold
+   - Enable remaining skipped UI tests where possible
 
 3. **Feed Content Implementation**
    - Wire up FeedView to display actual activities
@@ -476,9 +482,10 @@ Pulsar/
    - Add segment detail screens
 
 2. **Cloud Sync Implementation**
-   - Implement activity sync to Supabase
-   - Add background sync capability
-   - Handle sync conflicts
+   - ✅ Activity sync to Supabase already implemented (syncActivitiesFromBackend, saveActivity)
+   - ✅ Social sync already implemented (syncFollowsFromBackend, syncKudosFromBackend, syncCommentsFromBackend)
+   - ⏳ Add automatic sync triggers on app launch and feed refresh
+   - Handle sync conflicts (future enhancement)
 
 3. **Social UI Integration**
    - Wire up kudos/comment buttons
