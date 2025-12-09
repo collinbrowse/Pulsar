@@ -69,10 +69,26 @@ struct FeedView: View {
         isLoading = true
         
         do {
+            // Sync follows from backend to ensure we have latest following relationships
+            try await socialService.syncFollowsFromBackend(
+                for: userId,
+                modelContext: modelContext
+            )
+            
+            // Sync activities from backend to ensure we have latest activities from followed users
+            try await ActivityService.shared.syncActivitiesFromBackend(
+                for: userId,
+                modelContext: modelContext,
+                appState: appState
+            )
+            
+            // Now get the feed with synced data
             feedItems = try socialService.getFeed(userId: userId, modelContext: modelContext)
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
+            // Use ErrorManager for user-friendly error messages
+            ErrorManager.shared.logError(error, context: "Load Feed")
+            errorMessage = error.userMessage
             isLoading = false
         }
     }
