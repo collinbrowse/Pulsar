@@ -45,7 +45,7 @@ struct ActivityMapViewRepresentableTests {
         onTap: (() -> Void)? = nil
     ) -> RepresentableContext {
         let region = createTestRegion()
-        var binding = Binding(get: { region }, set: { _ in })
+        let binding = Binding(get: { region }, set: { _ in })
         
         let representable = ActivityMapViewRepresentable(
             trackPoints: trackPoints,
@@ -114,7 +114,10 @@ struct ActivityMapViewRepresentableTests {
     @Test("dismantleUIView should clean up map view delegate")
     func testDismantleUIViewRemovesDelegate() async throws {
         let trackPoints = createTestTrackPoints()
-        let (representable, mapView, coordinator) = createRepresentableAndMapView(trackPoints: trackPoints)
+        let context = createRepresentableAndMapView(trackPoints: trackPoints)
+        let representable = context.representable
+        let mapView = context.mapView
+        let coordinator = context.coordinator
         
         // Verify delegate is set
         #expect(mapView.delegate != nil)
@@ -130,7 +133,10 @@ struct ActivityMapViewRepresentableTests {
     @Test("dismantleUIView should remove all overlays")
     func testDismantleUIViewRemovesOverlays() async throws {
         let trackPoints = createTestTrackPoints()
-        let (representable, mapView, coordinator) = createRepresentableAndMapView(trackPoints: trackPoints)
+        let context = createRepresentableAndMapView(trackPoints: trackPoints)
+        let representable = context.representable
+        let mapView = context.mapView
+        let coordinator = context.coordinator
         
         // Verify overlays are added
         #expect(!mapView.overlays.isEmpty)
@@ -145,7 +151,10 @@ struct ActivityMapViewRepresentableTests {
     @Test("dismantleUIView should remove all annotations")
     func testDismantleUIViewRemovesAnnotations() async throws {
         let trackPoints = createTestTrackPoints()
-        let (representable, mapView, coordinator) = createRepresentableAndMapView(trackPoints: trackPoints)
+        let context = createRepresentableAndMapView(trackPoints: trackPoints)
+        let representable = context.representable
+        let mapView = context.mapView
+        let coordinator = context.coordinator
         
         // Verify annotations are added (start and end markers)
         let nonUserLocationAnnotations = mapView.annotations.filter { !($0 is MKUserLocation) }
@@ -163,10 +172,13 @@ struct ActivityMapViewRepresentableTests {
     func testDismantleUIViewRemovesGestureRecognizers() async throws {
         var tapCalled = false
         let trackPoints = createTestTrackPoints()
-        let (representable, mapView, coordinator) = createRepresentableAndMapView(
+        let context = createRepresentableAndMapView(
             trackPoints: trackPoints,
             onTap: { tapCalled = true }
         )
+        let representable = context.representable
+        let mapView = context.mapView
+        let coordinator = context.coordinator
         
         // Verify gesture recognizer is added
         let tapGestures = mapView.gestureRecognizers?.filter { $0 is UITapGestureRecognizer } ?? []
@@ -186,10 +198,13 @@ struct ActivityMapViewRepresentableTests {
     func testDismantleUIViewCleansUpCoordinator() async throws {
         var tapCalled = false
         let trackPoints = createTestTrackPoints()
-        let (representable, mapView, coordinator) = createRepresentableAndMapView(
+        let context = createRepresentableAndMapView(
             trackPoints: trackPoints,
             onTap: { tapCalled = true }
         )
+        let representable = context.representable
+        let mapView = context.mapView
+        let coordinator = context.coordinator
         
         // Verify coordinator has properties set
         #expect(coordinator.onTap != nil)
@@ -206,7 +221,10 @@ struct ActivityMapViewRepresentableTests {
     @Test("dismantleUIView should execute on main thread")
     func testDismantleUIViewExecutesOnMainThread() async throws {
         let trackPoints = createTestTrackPoints()
-        let (representable, mapView, coordinator) = createRepresentableAndMapView(trackPoints: trackPoints)
+        let context = createRepresentableAndMapView(trackPoints: trackPoints)
+        let representable = context.representable
+        let mapView = context.mapView
+        let coordinator = context.coordinator
         
         // Since we're @MainActor, we're guaranteed to be on the main thread
         // Call dismantleUIView - should execute on main thread (assertion in dismantleUIView will verify)
