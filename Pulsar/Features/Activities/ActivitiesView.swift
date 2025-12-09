@@ -39,6 +39,12 @@ struct ActivitiesView: View {
             .sheet(isPresented: $showUpload) {
                 ActivityUploadView()
             }
+            .task {
+                // Sync activities when view appears if user is authenticated
+                if appState.isAuthenticated, let userId = appState.currentUserId {
+                    await syncActivities()
+                }
+            }
         }
     }
     
@@ -81,10 +87,17 @@ struct ActivitiesView: View {
         do {
             try await ActivityService.shared.syncActivitiesFromBackend(
                 for: userId,
-                modelContext: modelContext
+                modelContext: modelContext,
+                appState: appState
+            )
+            // Retry any pending activities that failed to sync
+            await ActivityService.shared.syncPendingActivities(
+                for: userId,
+                modelContext: modelContext,
+                appState: appState
             )
         } catch {
-            // Silently fail - user can retry
+            // Silently fail - user can retry (auth errors will have already logged out user)
             print("Failed to sync activities: \(error.localizedDescription)")
         }
     }
@@ -93,7 +106,7 @@ struct ActivitiesView: View {
         Task {
             for index in offsets {
                 let activity = activities[index]
-                try? await ActivityService.shared.deleteActivity(activity, modelContext: modelContext)
+                try? await ActivityService.shared.deleteActivity(activity, modelContext: modelContext, appState: appState)
             }
         }
     }

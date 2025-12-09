@@ -145,4 +145,75 @@ struct AuthenticationServiceTests {
         #expect(AuthError.usernameTooLong.localizedDescription == "Username must be no more than 30 characters")
         #expect(AuthError.invalidUsername.localizedDescription == "Username can only contain letters, numbers, hyphens, and underscores")
     }
+    
+    // MARK: - Authentication Validation Tests
+    
+    @Test("validateAuthentication should return false when not authenticated")
+    func testValidateAuthenticationWhenNotAuthenticated() {
+        let service = AuthenticationService.shared
+        
+        // Ensure no session exists
+        service.signOut()
+        
+        // Should return false when not authenticated
+        #expect(service.validateAuthentication() == false)
+    }
+    
+    @Test("requireAuthentication should throw when not authenticated")
+    func testRequireAuthenticationThrowsWhenNotAuthenticated() {
+        let service = AuthenticationService.shared
+        
+        // Ensure no session exists
+        service.signOut()
+        
+        // Should throw AuthError.notAuthenticated
+        do {
+            try service.requireAuthentication()
+            Issue.record("Should have thrown AuthError.notAuthenticated")
+        } catch let error as AuthError {
+            #expect(error == .notAuthenticated)
+        } catch {
+            Issue.record("Should have thrown AuthError, got: \(error)")
+        }
+    }
+    
+    @Test("signOutAndRedirect should update appState and clear session")
+    func testSignOutAndRedirect() {
+        let service = AuthenticationService.shared
+        let appState = AppState()
+        
+        // Set initial state (simulating authenticated user)
+        appState.isAuthenticated = true
+        appState.currentUserId = "test-user-123"
+        appState.authErrorMessage = nil
+        
+        // Sign out and redirect
+        service.signOutAndRedirect(appState: appState, reason: "Test logout reason")
+        
+        // Verify appState was updated
+        #expect(appState.isAuthenticated == false)
+        #expect(appState.currentUserId == nil)
+        #expect(appState.authErrorMessage == "Test logout reason")
+        
+        // Verify session was cleared
+        #expect(service.isAuthenticated == false)
+        #expect(service.currentUserId == nil)
+    }
+    
+    @Test("signOutAndRedirect should work without error message")
+    func testSignOutAndRedirectWithoutReason() {
+        let service = AuthenticationService.shared
+        let appState = AppState()
+        
+        appState.isAuthenticated = true
+        appState.currentUserId = "test-user-123"
+        
+        // Sign out without reason
+        service.signOutAndRedirect(appState: appState, reason: nil)
+        
+        // Verify appState was updated
+        #expect(appState.isAuthenticated == false)
+        #expect(appState.currentUserId == nil)
+        #expect(appState.authErrorMessage == nil)
+    }
 }

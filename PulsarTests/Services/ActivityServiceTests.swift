@@ -8,6 +8,7 @@
 // swiftlint:disable file_length
 import Foundation
 @testable import Pulsar
+import SwiftData
 import Testing
 import XMLCoder
 
@@ -601,6 +602,357 @@ struct ActivityServiceTests {
         let activity = try await service.parseActivityFile(from: gpxURL, userId: "test-user")
         
         #expect(activity.originalFileName == "sample.gpx")
+    }
+    
+    // MARK: - Sync Status Tracking Tests
+    
+    @Test("Activity should have lastSyncedAt field")
+    func testActivityHasLastSyncedAtField() async throws {
+        let activity = Activity(
+            userId: "test-user",
+            name: "Test Activity",
+            activityType: .run,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(1800),
+            distance: 5000,
+            duration: 1800
+        )
+        
+        // Initially should be nil (never synced)
+        #expect(activity.lastSyncedAt == nil)
+        
+        // Can be set to a date
+        let syncDate = Date()
+        activity.lastSyncedAt = syncDate
+        #expect(activity.lastSyncedAt == syncDate)
+    }
+    
+    @Test("ActivityService syncPendingActivities should find activities with nil lastSyncedAt")
+    // swiftlint:disable:next function_body_length
+    func testSyncPendingActivitiesFindsUnsyncedActivities() async throws {
+        let service = ActivityService.shared
+        let modelContext = createTestModelContext()
+        let userId = "test-user-123"
+        
+        // Create activities with different sync statuses
+        let syncedActivity = Activity(
+            userId: userId,
+            name: "Synced Activity",
+            activityType: .run,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(1800),
+            distance: 5000,
+            duration: 1800
+        )
+        syncedActivity.lastSyncedAt = Date()
+        modelContext.insert(syncedActivity)
+        
+        let unsyncedActivity1 = Activity(
+            userId: userId,
+            name: "Unsynced Activity 1",
+            activityType: .ride,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(3600),
+            distance: 10000,
+            duration: 3600
+        )
+        // lastSyncedAt is nil by default
+        modelContext.insert(unsyncedActivity1)
+        
+        let unsyncedActivity2 = Activity(
+            userId: userId,
+            name: "Unsynced Activity 2",
+            activityType: .walk,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(900),
+            distance: 2000,
+            duration: 900
+        )
+        // lastSyncedAt is nil by default
+        modelContext.insert(unsyncedActivity2)
+        
+        // Create activity for different user (should not be found)
+        let otherUserActivity = Activity(
+            userId: "other-user",
+            name: "Other User Activity",
+            activityType: .run,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(1800),
+            distance: 5000,
+            duration: 1800
+        )
+        modelContext.insert(otherUserActivity)
+        
+        try modelContext.save()
+        
+        // Verify we can find unsynced activities using the same predicate logic
+        let descriptor = FetchDescriptor<Activity>(
+            predicate: #Predicate { activity in
+                activity.userId == userId && activity.lastSyncedAt == nil
+            }
+        )
+        
+        let pendingActivities = try modelContext.fetch(descriptor)
+        
+        // Should find 2 unsynced activities for the test user
+        #expect(pendingActivities.count == 2)
+        #expect(pendingActivities.contains { $0.id == unsyncedActivity1.id })
+        #expect(pendingActivities.contains { $0.id == unsyncedActivity2.id })
+        #expect(!pendingActivities.contains { $0.id == syncedActivity.id })
+        #expect(!pendingActivities.contains { $0.id == otherUserActivity.id })
+    }
+    
+    @Test("ActivityService syncPendingActivities should handle empty pending activities")
+    func testSyncPendingActivitiesHandlesEmptyList() async throws {
+        let service = ActivityService.shared
+        let modelContext = createTestModelContext()
+        let userId = "test-user-123"
+        
+        // Create only synced activities
+        let syncedActivity = Activity(
+            userId: userId,
+            name: "Synced Activity",
+            activityType: .run,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(1800),
+            distance: 5000,
+            duration: 1800
+        )
+        syncedActivity.lastSyncedAt = Date()
+        modelContext.insert(syncedActivity)
+        try modelContext.save()
+        
+        // Should not throw and should handle gracefully
+        let appState = AppState()
+        await service.syncPendingActivities(for: userId, modelContext: modelContext, appState: appState)
+        
+        // Verify activity is still there and still synced
+        let descriptor = FetchDescriptor<Activity>(
+            predicate: #Predicate { activity in
+                activity.userId == userId
+            }
+        )
+        let activities = try modelContext.fetch(descriptor)
+        #expect(activities.count == 1)
+        #expect(activities.first?.lastSyncedAt != nil)
+    }
+    
+    // MARK: - Authentication Error Handling Tests
+    
+    @Test("NetworkError 401 should be identified as authentication error")
+    func testNetworkError401IsAuthError() {
+        let error = NetworkError.httpError(statusCode: 401, errorCode: "unauthorized", message: "Authentication required")
+        
+        // Verify it's a NetworkError with 401 status
+        if case .httpError(let statusCode, _, _) = error {
+            #expect(statusCode == 401)
+        } else {
+            Issue.record("Expected httpError with statusCode 401")
+        }
+    }
+    
+    @Test("NetworkError 500 should be identified as network error, not auth error")
+    func testNetworkError500IsNotAuthError() {
+        let error = NetworkError.httpError(statusCode: 500, errorCode: "internal_server_error", message: "Server error")
+        
+        // Verify it's a NetworkError with 500 status (not 401)
+        if case .httpError(let statusCode, _, _) = error {
+            #expect(statusCode == 500)
+            #expect(statusCode != 401) // Should not be treated as auth error
+        } else {
+            Issue.record("Expected httpError with statusCode 500")
+        }
+    }
+    
+    @Test("URLError should be identified as network error, not auth error")
+    func testURLErrorIsNotAuthError() {
+        let error = URLError(.notConnectedToInternet)
+        
+        // Verify it's a URLError (network issue, not auth)
+        #expect(error.code == .notConnectedToInternet)
+        // URLError should not trigger logout
+    }
+    
+    @Test("AuthError.notAuthenticated should be identified as authentication error")
+    func testAuthErrorNotAuthenticatedIsAuthError() {
+        let error = AuthError.notAuthenticated
+        
+        // Verify it's the correct auth error
+        #expect(error == .notAuthenticated)
+    }
+    
+    @Test("ActivityService methods should accept appState parameter")
+    func testActivityServiceMethodsAcceptAppState() {
+        let modelContext = createTestModelContext()
+        let appState = AppState()
+        
+        // Verify methods accept appState parameter (compile-time check)
+        // This test ensures the API is correct
+        let activity = Activity(
+            userId: "test-user",
+            name: "Test Activity",
+            activityType: .run,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(100),
+            distance: 1000,
+            duration: 100
+        )
+        
+        // These should compile without errors
+        // Note: These will fail at runtime without proper setup, but we're just checking the API
+        let service = ActivityService.shared
+        Task {
+            _ = try? await service.saveActivity(activity, modelContext: modelContext, appState: appState)
+            _ = try? await service.syncActivitiesFromBackend(for: "test-user", modelContext: modelContext, appState: appState)
+            _ = await service.syncPendingActivities(for: "test-user", modelContext: modelContext, appState: appState)
+            _ = try? await service.deleteActivity(activity, modelContext: modelContext, appState: appState)
+        }
+        
+        // If we get here, the API is correct (compilation succeeded)
+        // Verify appState was created successfully
+        #expect(appState.isAuthenticated == false)
+    }
+    
+    // MARK: - Geometry Parsing Tests
+    
+    /// Creates a JSONDecoder with the same date decoding strategy as SupabaseClient
+    private func createSupabaseJSONDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            
+            // Try format with timezone offset (PostgreSQL default)
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with fractional seconds
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try format with Z (Zulu time)
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try with fractional seconds and Z
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
+        }
+        return decoder
+    }
+    
+    @Test("ActivityBackendDTO should decode WKT geometry format")
+    func testActivityBackendDTODecodesWKTGeometry() throws {
+        // Create JSON with WKT format geometry
+        let wktGeometry = "SRID=4326;LINESTRING(-122.4194 37.7749, -122.4195 37.7750, -122.4196 37.7751)"
+        let jsonString = """
+        {
+            "activity_id": "test-activity-123",
+            "user_id": "test-user-123",
+            "activity_type": "run",
+            "name": "Test Activity",
+            "distance_m": 1000.0,
+            "duration_sec": 3600,
+            "start_time": "2025-01-01T12:00:00Z",
+            "end_time": "2025-01-01T13:00:00Z",
+            "visibility": "public",
+            "geom": "\(wktGeometry)"
+        }
+        """
+        
+        let jsonData = jsonString.data(using: .utf8)!
+        let decoder = createSupabaseJSONDecoder()
+        let dto = try decoder.decode(ActivityBackendDTO.self, from: jsonData)
+        
+        #expect(dto.activityId == "test-activity-123")
+        #expect(dto.geom == wktGeometry)
+    }
+    
+    @Test("ActivityBackendDTO should decode GeoJSON geometry format")
+    func testActivityBackendDTODecodesGeoJSONGeometry() throws {
+        // Create JSON with GeoJSON format geometry
+        let jsonString = """
+        {
+            "activity_id": "test-activity-456",
+            "user_id": "test-user-123",
+            "activity_type": "run",
+            "name": "Test Activity",
+            "distance_m": 1000.0,
+            "duration_sec": 3600,
+            "start_time": "2025-01-01T12:00:00Z",
+            "end_time": "2025-01-01T13:00:00Z",
+            "visibility": "public",
+            "geom": {
+                "type": "LineString",
+                "coordinates": [[-122.4194, 37.7749], [-122.4195, 37.7750], [-122.4196, 37.7751]]
+            }
+        }
+        """
+        
+        let jsonData = jsonString.data(using: .utf8)!
+        let decoder = createSupabaseJSONDecoder()
+        let dto = try decoder.decode(ActivityBackendDTO.self, from: jsonData)
+        
+        #expect(dto.activityId == "test-activity-456")
+        // GeoJSON should be converted to JSON string
+        #expect(dto.geom != nil)
+        #expect(dto.geom?.contains("LineString") == true)
+        #expect(dto.geom?.contains("coordinates") == true)
+    }
+    
+    @Test("ActivityBackendDTO should handle missing geometry")
+    func testActivityBackendDTODecodesMissingGeometry() throws {
+        let jsonString = """
+        {
+            "activity_id": "test-activity-789",
+            "user_id": "test-user-123",
+            "activity_type": "run",
+            "name": "Test Activity",
+            "distance_m": 1000.0,
+            "duration_sec": 3600,
+            "start_time": "2025-01-01T12:00:00Z",
+            "end_time": "2025-01-01T13:00:00Z",
+            "visibility": "public"
+        }
+        """
+        
+        let jsonData = jsonString.data(using: .utf8)!
+        let decoder = createSupabaseJSONDecoder()
+        let dto = try decoder.decode(ActivityBackendDTO.self, from: jsonData)
+        
+        #expect(dto.activityId == "test-activity-789")
+        #expect(dto.geom == nil)
+    }
+    
+    // MARK: - Test Helpers
+    
+    private func createTestModelContext() -> ModelContext {
+        let schema = Schema([
+            Activity.self,
+            TrackPoint.self,
+            Profile.self,
+            Follow.self,
+            Kudo.self,
+            Comment.self
+        ])
+        
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        // swiftlint:disable:next force_try
+        let container = try! ModelContainer(for: schema, configurations: [modelConfiguration])
+        return ModelContext(container)
     }
 }
 

@@ -35,6 +35,33 @@ struct ActivityTests {
         #expect(activity.duration == 1800)
         #expect(activity.source == .fileUpload)
         #expect(activity.isPrivate == false)
+        // lastSyncedAt should be nil initially
+        #expect(activity.lastSyncedAt == nil)
+    }
+    
+    @Test("Activity should track sync status with lastSyncedAt")
+    func testActivitySyncStatusTracking() async throws {
+        let activity = Activity(
+            userId: "test-user",
+            name: "Test Activity",
+            activityType: .run,
+            startDate: Date(),
+            endDate: Date().addingTimeInterval(1800),
+            distance: 5000,
+            duration: 1800
+        )
+        
+        // Initially should be nil (never synced)
+        #expect(activity.lastSyncedAt == nil)
+        
+        // Can be set to track successful sync
+        let syncDate = Date()
+        activity.lastSyncedAt = syncDate
+        #expect(activity.lastSyncedAt == syncDate)
+        
+        // Can be set to nil to mark for retry
+        activity.lastSyncedAt = nil
+        #expect(activity.lastSyncedAt == nil)
     }
     
     @Test("Activity should calculate average pace correctly")

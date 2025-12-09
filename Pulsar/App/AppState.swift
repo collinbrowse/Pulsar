@@ -15,6 +15,7 @@ final class AppState: Sendable {
     
     var isAuthenticated: Bool = false
     var currentUserId: String?
+    var authErrorMessage: String? // Error message to display on login screen after auth failure
     
     // MARK: - User Profile
     

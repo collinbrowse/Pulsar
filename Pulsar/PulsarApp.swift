@@ -66,7 +66,14 @@ struct PulsarApp: App {
                 do {
                     try await ActivityService.shared.syncActivitiesFromBackend(
                         for: userId,
-                        modelContext: modelContext
+                        modelContext: modelContext,
+                        appState: appState
+                    )
+                    // Retry any pending activities that failed to sync
+                    await ActivityService.shared.syncPendingActivities(
+                        for: userId,
+                        modelContext: modelContext,
+                        appState: appState
                     )
                 } catch {
                     logger.warning("Failed to sync activities on launch: \(error.localizedDescription)")

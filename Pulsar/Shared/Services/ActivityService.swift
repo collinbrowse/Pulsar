@@ -632,6 +632,163 @@ final class ActivityService {
         return "SRID=4326;LINESTRING(\(coordinates))"
     }
     
+    /// Parse PostGIS LineString (WKT or GeoJSON) and reconstruct track points
+    /// WKT Format: "SRID=4326;LINESTRING(lon lat, lon lat, ...)"
+    /// GeoJSON Format: {"type":"LineString","coordinates":[[lon,lat],[lon,lat],...]}
+    private func postGISLineStringToTrackPoints(_ geometry: String?, startTime: Date, endTime: Date) -> [TrackPoint]? {
+        guard let geometry = geometry, !geometry.isEmpty else { return nil }
+        
+        var coordinatePairs: [(lon: Double, lat: Double, elevation: Double?)] = []
+        
+        // Try parsing as GeoJSON first (PostgREST returns this by default)
+        if geometry.trimmingCharacters(in: .whitespaces).hasPrefix("{") {
+            // Parse GeoJSON
+            guard let data = geometry.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let type = json["type"] as? String,
+                  type == "LineString",
+                  let coordinates = json["coordinates"] as? [[Any]] else {
+                logger.warning("⚠️ Invalid GeoJSON LineString format")
+                return nil
+            }
+            
+            for coordArray in coordinates {
+                guard coordArray.count >= 2 else {
+                    logger.warning("⚠️ Coordinate array has insufficient elements: \(coordArray.count)")
+                    continue
+                }
+                
+                // GeoJSON standard format is [lon, lat, elevation?]
+                // PostgREST/PostGIS should return coordinates in this format
+                guard let first = coordArray[0] as? Double,
+                      let second = coordArray[1] as? Double else {
+                    logger.warning("⚠️ Invalid coordinate types in array")
+                    continue
+                }
+                
+                // GeoJSON standard is [lon, lat]
+                // However, some systems might reverse this, so we check the values
+                // Longitude typically has larger absolute values than latitude for most locations
+                // But this is not reliable, so we'll use a heuristic:
+                // If first value is clearly a longitude (abs > 90) or second is clearly a latitude (abs <= 90)
+                // Otherwise, assume standard GeoJSON order [lon, lat]
+                let lon: Double
+                let lat: Double
+                
+                // Heuristic: if first value is outside latitude range but within longitude range, it's likely lon
+                // If second value is within latitude range, it's likely lat
+                if (abs(first) > 90 && abs(first) <= 180) || (abs(second) <= 90 && abs(first) > abs(second)) {
+                    // First is likely longitude, second is likely latitude (GeoJSON standard)
+                    lon = first
+                    lat = second
+                } else if (abs(second) > 90 && abs(second) <= 180) || (abs(first) <= 90 && abs(second) > abs(first)) {
+                    // Reversed: first is latitude, second is longitude
+                    logger.warning("⚠️ GeoJSON coordinates appear reversed (first=\(first), second=\(second)), correcting")
+                    lat = first
+                    lon = second
+                } else {
+                    // Ambiguous - assume GeoJSON standard [lon, lat]
+                    // Log first few to help debug
+                    if coordinatePairs.count < 3 {
+                        logger.debug("Ambiguous coordinate order, assuming [lon, lat]: [\(first), \(second)]")
+                    }
+                    lon = first
+                    lat = second
+                }
+                
+                let elevation = coordArray.count >= 3 ? coordArray[2] as? Double : nil
+                
+                // Validate coordinates before adding
+                guard lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 else {
+                    logger.warning("⚠️ Invalid coordinate: lat=\(lat), lon=\(lon)")
+                    continue
+                }
+                
+                coordinatePairs.append((lon: lon, lat: lat, elevation: elevation))
+            }
+        } else {
+            // Parse WKT format
+            guard let linestringStart = geometry.range(of: "LINESTRING("),
+                  let linestringEnd = geometry.range(of: ")", range: linestringStart.upperBound..<geometry.endIndex) else {
+                logger.warning("⚠️ Invalid PostGIS LineString WKT format: \(geometry)")
+                return nil
+            }
+            
+            let coordinatesString = String(geometry[linestringStart.upperBound..<linestringEnd.lowerBound])
+            let pairs = coordinatesString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            
+            for pair in pairs {
+                let components = pair.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces) }
+                guard components.count >= 2,
+                      let lon = Double(components[0]),
+                      let lat = Double(components[1]) else {
+                    continue
+                }
+                let elevation = components.count >= 3 ? Double(components[2]) : nil
+                coordinatePairs.append((lon: lon, lat: lat, elevation: elevation))
+            }
+        }
+        
+        guard coordinatePairs.count >= 2 else {
+            logger.warning("⚠️ LineString has insufficient coordinates: \(coordinatePairs.count)")
+            return nil
+        }
+        
+        // Create track points with interpolated timestamps
+        // IMPORTANT: Process coordinates in the EXACT order they appear in the GeoJSON array
+        // This preserves the sequential path order from PostGIS
+        // DO NOT deduplicate - preserve all coordinates including stationary points
+        // DO NOT sort - preserve the coordinate order from PostGIS
+        var trackPoints: [TrackPoint] = []
+        let duration = endTime.timeIntervalSince(startTime)
+        let timeInterval = coordinatePairs.count > 1 ? duration / Double(coordinatePairs.count - 1) : 0
+        
+        for (index, pair) in coordinatePairs.enumerated() {
+            // Validate coordinates
+            guard pair.lat >= -90 && pair.lat <= 90 && pair.lon >= -180 && pair.lon <= 180 else {
+                continue
+            }
+            
+            // Interpolate timestamp evenly across the activity duration
+            // Note: We can't recover original timestamps from PostGIS geometry,
+            // but we preserve the coordinate order which is critical for correct path rendering
+            let timestamp = startTime.addingTimeInterval(timeInterval * Double(index))
+            
+            let point = TrackPoint(
+                latitude: pair.lat,
+                longitude: pair.lon,
+                elevation: pair.elevation,
+                timestamp: timestamp,
+                heartRate: nil,
+                power: nil,
+                cadence: nil,
+                speed: nil,
+                distance: nil
+            )
+            trackPoints.append(point)
+        }
+        
+        guard !trackPoints.isEmpty else { return nil }
+        
+        // Log first and last coordinates for debugging
+        if let first = trackPoints.first, let last = trackPoints.last {
+            logger.debug("✅ Reconstructed \(trackPoints.count) track points from PostGIS geometry")
+            logger.debug("   First point: lat=\(first.latitude), lon=\(first.longitude)")
+            logger.debug("   Last point: lat=\(last.latitude), lon=\(last.longitude)")
+            
+            // Check coordinate spread for debugging
+            let allLats = trackPoints.map { $0.latitude }
+            let allLons = trackPoints.map { $0.longitude }
+            let latRange = (allLats.max() ?? 0) - (allLats.min() ?? 0)
+            let lonRange = (allLons.max() ?? 0) - (allLons.min() ?? 0)
+            logger.debug("   Coordinate spread: lat=\(String(format: "%.6f", latRange)), lon=\(String(format: "%.6f", lonRange))")
+        }
+        
+        // Return points in the exact order they appear in PostGIS geometry
+        // This preserves the correct path shape, including stationary periods
+        return trackPoints
+    }
+    
     /// Convert Activity to backend DTO for Supabase
     private func activityToBackendDTO(_ activity: Activity) -> ActivityBackendDTO {
         let trackPoints = activity.trackPoints ?? []
@@ -729,7 +886,8 @@ final class ActivityService {
     /// Save activity to local SwiftData and sync to backend
     func saveActivity(
         _ activity: Activity,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        appState: AppState
     ) async throws {
         logger.info("💾 Saving activity: \(activity.name)")
         
@@ -740,7 +898,7 @@ final class ActivityService {
         // Sync to Supabase backend
         do {
             // Get valid access token, refreshing if necessary
-            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken(appState: appState)
             
             let backendDTO = activityToBackendDTO(activity)
             try await SupabaseClient.shared.upsert(
@@ -749,11 +907,37 @@ final class ActivityService {
                 accessToken: accessToken
             )
             
+            // Mark as synced only after successful backend sync
+            activity.lastSyncedAt = Date()
+            try modelContext.save()
+            
             logger.info("✅ Activity synced to backend")
+        } catch let error as AuthError where error == .notAuthenticated {
+            // Authentication error - logout user and redirect
+            logger.error("❌ Authentication failed - logging out user")
+            AuthenticationService.shared.signOutAndRedirect(appState: appState, reason: "Your session has expired. Please sign in again.")
+            // Leave lastSyncedAt as nil to mark for retry after re-authentication
+            return // Exit early after logout
+        } catch let networkError as NetworkError {
+            // Check if it's an authentication-related HTTP error (401)
+            if case .httpError(let statusCode, _, _) = networkError, statusCode == 401 {
+                // 401 Unauthorized - authentication error, logout
+                logger.error("❌ Authentication failed (401) - logging out user")
+                AuthenticationService.shared.signOutAndRedirect(appState: appState, reason: "Your session has expired. Please sign in again.")
+                return // Exit early after logout
+            } else {
+                // Other network errors (500, timeout, etc.) - don't logout
+                logger.error("❌ Network error syncing activity to backend: \(networkError.localizedDescription)")
+                // Leave lastSyncedAt as nil to mark for retry
+            }
+        } catch let urlError as URLError {
+            // URLSession errors (connection failures, timeouts) - don't logout
+            logger.error("❌ Network connection error syncing activity: \(urlError.localizedDescription)")
+            // Leave lastSyncedAt as nil to mark for retry
         } catch {
-            // Log error but don't fail the save - activity is saved locally
+            // Other errors - don't logout, just log and retry later
             logger.error("❌ Failed to sync activity to backend: \(error.localizedDescription)")
-            // Don't throw - we want local save to succeed even if backend sync fails
+            // Leave lastSyncedAt as nil to mark for retry
         }
         
         // Track analytics
@@ -786,62 +970,204 @@ final class ActivityService {
     /// Sync activities from backend to local storage
     func syncActivitiesFromBackend(
         for userId: String,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        appState: AppState
     ) async throws {
         logger.info("🔄 Syncing activities from backend for user: \(userId)")
+        
+        // Validate authentication before syncing
+        guard AuthenticationService.shared.validateAuthentication() else {
+            logger.error("❌ Authentication invalid - logging out user")
+            AuthenticationService.shared.signOutAndRedirect(
+                appState: appState,
+                reason: "Your session has expired. Please sign in again."
+            )
+            throw AuthError.notAuthenticated
+        }
         
         // Get valid access token, refreshing if necessary
         let accessToken = try await AuthenticationService.shared.getValidAccessToken()
         
         // Fetch activities from backend
-        // Note: We exclude 'geom' from the select because:
-        // 1. PostgREST returns PostGIS geometry as GeoJSON, not WKT
-        // 2. PostgREST doesn't support SQL functions like ST_AsText() in select parameter
-        // 3. We don't reconstruct track points from geometry anyway (activities synced from backend have nil trackPoints)
-        // The geom field will be nil in the DTO, which is fine since we're not using it
+        // Note: PostgREST returns PostGIS geometry as GeoJSON object
+        // We'll decode it in ActivityBackendDTO and convert to JSON string for parsing
         let selectFields = """
             activity_id,user_id,activity_type,name,description,distance_m,duration_sec,\
             elevation_gain_m,elevation_loss_m,max_elevation,min_elevation,\
             avg_heart_rate,max_heart_rate,avg_power,max_power,avg_cadence,max_cadence,\
             start_time,end_time,start_lat,start_lon,end_lat,end_lon,\
-            visibility,file_url,original_file_name
+            geom,visibility,file_url,original_file_name
             """
-        let backendActivities: [ActivityBackendDTO] = try await SupabaseClient.shared.fetch(
-            from: "activities",
-            select: selectFields,
-            filter: ["user_id": userId],
-            accessToken: accessToken
-        )
+        let backendActivities: [ActivityBackendDTO]
+        do {
+            backendActivities = try await SupabaseClient.shared.fetch(
+                from: "activities",
+                select: selectFields,
+                filter: ["user_id": userId],
+                accessToken: accessToken
+            )
+        } catch let networkError as NetworkError {
+            // Check if it's an authentication-related HTTP error (401)
+            if case .httpError(let statusCode, _, _) = networkError, statusCode == 401 {
+                logger.error("❌ Authentication failed (401) - logging out user")
+                AuthenticationService.shared.signOutAndRedirect(
+                    appState: appState,
+                    reason: "Your session has expired. Please sign in again."
+                )
+                throw AuthError.notAuthenticated
+            } else {
+                // Other network errors - rethrow for caller to handle
+                throw networkError
+            }
+        }
         
         logger.info("📥 Fetched \(backendActivities.count) activities from backend")
         
         // Get existing local activities
         let localActivities = try fetchActivities(for: userId, modelContext: modelContext)
         let localActivityIDs = Set(localActivities.map { $0.id })
+        logger.debug("📋 Found \(localActivities.count) local activities with IDs: \(Array(localActivityIDs.prefix(5)))")
         
         // Convert backend DTOs to Activity models and merge
         for backendDTO in backendActivities {
             guard let activityId = backendDTO.activityId else {
-                logger.warning("⚠️ Backend activity missing activity_id, skipping")
+                logger.warning("⚠️ Backend activity missing activity_id, skipping. Name: \(backendDTO.name)")
                 continue
             }
             
-            // Check if activity already exists locally
+            logger.debug("🔄 Processing backend activity: ID=\(activityId), name=\(backendDTO.name)")
+            
+            // First check: Quick Set lookup
             if localActivityIDs.contains(activityId) {
-                // Update existing activity if backend version is newer
-                // For now, skip updates - we'll implement conflict resolution later
-                logger.debug("Activity \(activityId) already exists locally, skipping")
+                logger.debug("Activity \(activityId) already exists locally (Set check), skipping")
                 continue
-            } else {
-                // Create new activity from backend data
-                let activity = activityFromBackendDTO(backendDTO, userId: userId)
-                modelContext.insert(activity)
-                logger.debug("Inserted activity from backend: \(activityId)")
             }
+            
+            // Second check: Direct query to modelContext to catch any timing issues
+            // This is important because SwiftData might not have committed the previous insert yet
+            let idDescriptor = FetchDescriptor<Activity>(
+                predicate: #Predicate<Activity> { activity in
+                    activity.id == activityId && activity.userId == userId
+                }
+            )
+            if let existingActivity = try? modelContext.fetch(idDescriptor).first {
+                logger.debug("Activity \(activityId) found in direct query, skipping duplicate insert")
+                // Update lastSyncedAt if it's not set (in case this is a local activity that just synced)
+                if existingActivity.lastSyncedAt == nil {
+                    existingActivity.lastSyncedAt = Date()
+                    try? modelContext.save()
+                }
+                continue
+            }
+            
+            // Third check: Fallback - check by name and startDate to catch any ID mismatches
+            // This helps if the backend somehow returns a different ID than what we sent
+            // We fetch all user activities and filter in Swift since predicates can't use external values
+            if let existingActivity = localActivities.first(where: { activity in
+                // Match by name and start date (within 1 minute)
+                activity.name == backendDTO.name &&
+                abs(activity.startDate.timeIntervalSince(backendDTO.startTime)) < 60.0
+            }) {
+                logger.warning("⚠️ Activity with matching name/date found but different ID. Local ID: \(existingActivity.id), Backend ID: \(activityId). Skipping duplicate insert.")
+                // Update the existing activity's lastSyncedAt
+                if existingActivity.lastSyncedAt == nil {
+                    existingActivity.lastSyncedAt = Date()
+                    try? modelContext.save()
+                }
+                continue
+            }
+            
+            // All checks passed - create new activity from backend data
+            let activity = activityFromBackendDTO(backendDTO, userId: userId)
+            modelContext.insert(activity)
+            logger.debug("Inserted activity from backend: \(activityId)")
         }
         
         try modelContext.save()
         logger.info("✅ Activities synced from backend")
+    }
+    
+    /// Retry syncing activities that failed to sync to backend
+    func syncPendingActivities(
+        for userId: String,
+        modelContext: ModelContext,
+        appState: AppState
+    ) async {
+        logger.info("🔄 Retrying sync for pending activities for user: \(userId)")
+        
+        // Validate authentication before syncing
+        guard AuthenticationService.shared.validateAuthentication() else {
+            logger.error("❌ Authentication invalid - logging out user")
+            AuthenticationService.shared.signOutAndRedirect(
+                appState: appState,
+                reason: "Your session has expired. Please sign in again."
+            )
+            return
+        }
+        
+        // Find all activities with nil lastSyncedAt (never synced or failed sync)
+        let descriptor = FetchDescriptor<Activity>(
+            predicate: #Predicate { activity in
+                activity.userId == userId && activity.lastSyncedAt == nil
+            }
+        )
+        
+        guard let pendingActivities = try? modelContext.fetch(descriptor), !pendingActivities.isEmpty else {
+            logger.debug("No pending activities to sync")
+            return
+        }
+        
+        logger.info("📤 Found \(pendingActivities.count) pending activities to sync")
+        
+        // Attempt to sync each pending activity
+        for activity in pendingActivities {
+            do {
+                // Get valid access token, refreshing if necessary
+                let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+                
+                let backendDTO = activityToBackendDTO(activity)
+                try await SupabaseClient.shared.upsert(
+                    table: "activities",
+                    data: backendDTO,
+                    accessToken: accessToken
+                )
+                
+                // Mark as synced after successful backend sync
+                activity.lastSyncedAt = Date()
+                try modelContext.save()
+                
+                logger.info("✅ Retried sync for activity: \(activity.name)")
+            } catch let error as AuthError where error == .notAuthenticated {
+                // Authentication error - logout and stop retrying
+                logger.error("❌ Authentication failed during retry - logging out user")
+                AuthenticationService.shared.signOutAndRedirect(
+                    appState: appState,
+                    reason: "Your session has expired. Please sign in again."
+                )
+                return
+            } catch let networkError as NetworkError {
+                // Check if it's an authentication-related HTTP error (401)
+                if case .httpError(let statusCode, _, _) = networkError, statusCode == 401 {
+                    logger.error("❌ Authentication failed (401) during retry - logging out user")
+                    AuthenticationService.shared.signOutAndRedirect(
+                        appState: appState,
+                        reason: "Your session has expired. Please sign in again."
+                    )
+                    return
+                } else {
+                    // Other network errors - log but continue with other activities
+                    logger.error("❌ Network error retrying sync for activity \(activity.id): \(networkError.localizedDescription)")
+                }
+            } catch let urlError as URLError {
+                // URLSession errors - don't logout, just log and continue
+                logger.error("❌ Network connection error retrying sync for activity \(activity.id): \(urlError.localizedDescription)")
+            } catch {
+                // Other errors - log but continue with other activities
+                logger.error("❌ Failed to retry sync for activity \(activity.id): \(error.localizedDescription)")
+            }
+        }
+        
+        logger.info("✅ Finished retrying sync for pending activities")
     }
     
     /// Convert backend DTO to Activity model
@@ -880,10 +1206,18 @@ final class ActivityService {
             activity.avgSpeed = dto.distanceM / Double(dto.durationSec)
         }
         
-        // Note: Track points are not stored individually in backend
-        // They're stored as PostGIS geometry. We can't reconstruct individual
-        // track points from the LineString, so trackPoints will be nil for
-        // activities synced from backend.
+        // Reconstruct track points from PostGIS LineString geometry
+        if let geom = dto.geom {
+            let reconstructedPoints = postGISLineStringToTrackPoints(
+                geom,
+                startTime: dto.startTime,
+                endTime: dto.endTime ?? dto.startTime
+            )
+            activity.trackPoints = reconstructedPoints
+        }
+        
+        // Mark as synced since it came from backend
+        activity.lastSyncedAt = Date()
         
         return activity
     }
@@ -891,14 +1225,25 @@ final class ActivityService {
     /// Delete an activity
     func deleteActivity(
         _ activity: Activity,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        appState: AppState
     ) async throws {
         logger.info("🗑️ Deleting activity: \(activity.name)")
+        
+        // Validate authentication before deleting
+        guard AuthenticationService.shared.validateAuthentication() else {
+            logger.error("❌ Authentication invalid - logging out user")
+            AuthenticationService.shared.signOutAndRedirect(
+                appState: appState,
+                reason: "Your session has expired. Please sign in again."
+            )
+            throw AuthError.notAuthenticated
+        }
         
         // Delete from backend
         do {
             // Get valid access token, refreshing if necessary
-            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken(appState: appState)
             
             logger.info("🗑️ Deleting activity from backend: \(activity.id)")
             try await SupabaseClient.shared.delete(
@@ -906,7 +1251,34 @@ final class ActivityService {
                 filter: ["activity_id": activity.id],
                 accessToken: accessToken
             )
+        } catch let error as AuthError where error == .notAuthenticated {
+            // Authentication error - logout user
+            logger.error("❌ Authentication failed during delete - logging out user")
+            AuthenticationService.shared.signOutAndRedirect(
+                appState: appState,
+                reason: "Your session has expired. Please sign in again."
+            )
+            throw error
+        } catch let networkError as NetworkError {
+            // Check if it's an authentication-related HTTP error (401)
+            if case .httpError(let statusCode, _, _) = networkError, statusCode == 401 {
+                logger.error("❌ Authentication failed (401) during delete - logging out user")
+                AuthenticationService.shared.signOutAndRedirect(
+                    appState: appState,
+                    reason: "Your session has expired. Please sign in again."
+                )
+                throw AuthError.notAuthenticated
+            } else {
+                // Other network errors - log but continue with local delete
+                logger.warning("⚠️ Network error deleting activity from backend: \(networkError.localizedDescription)")
+                // Continue with local delete even if backend delete fails
+            }
+        } catch let urlError as URLError {
+            // URLSession errors - don't logout, just log and continue with local delete
+            logger.warning("⚠️ Network connection error deleting activity from backend: \(urlError.localizedDescription)")
+            // Continue with local delete even if backend delete fails
         } catch {
+            // Other errors - log but continue with local delete
             logger.warning("⚠️ Failed to delete activity from backend: \(error.localizedDescription)")
             // Continue with local delete even if backend delete fails
         }

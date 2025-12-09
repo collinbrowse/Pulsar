@@ -5,6 +5,8 @@
 //  Created on 10/27/25.
 //
 
+// swiftlint:disable file_length
+// Justification: ActivityDetailView contains map view implementation and supporting views
 import MapKit
 import SwiftData
 import SwiftUI
@@ -347,6 +349,33 @@ struct ActivityMapViewRepresentable: UIViewRepresentable {
                 context.coordinator.tapGesture = nil
             }
         }
+    }
+    
+    func dismantleUIView(_ mapView: MKMapView, coordinator: Coordinator) {
+        // Ensure cleanup happens on main thread to prevent MapKit crashes
+        // MapKit resources (VKSharedResources) must be deallocated on main thread
+        assert(Thread.isMainThread, "dismantleUIView must be called on main thread")
+        
+        // Remove delegate to prevent callbacks during deallocation
+        mapView.delegate = nil
+        
+        // Remove all overlays
+        mapView.removeOverlays(mapView.overlays)
+        
+        // Remove all annotations (except user location which is managed by MapKit)
+        let annotationsToRemove = mapView.annotations.filter { !($0 is MKUserLocation) }
+        mapView.removeAnnotations(annotationsToRemove)
+        
+        // Remove all gesture recognizers
+        if let gestureRecognizers = mapView.gestureRecognizers {
+            for gesture in gestureRecognizers {
+                mapView.removeGestureRecognizer(gesture)
+            }
+        }
+        
+        // Clean up coordinator
+        coordinator.tapGesture = nil
+        coordinator.onTap = nil
     }
     
     func makeCoordinator() -> Coordinator {

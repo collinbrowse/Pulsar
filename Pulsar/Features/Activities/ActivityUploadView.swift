@@ -192,8 +192,23 @@ struct ActivityUploadView: View {
     }
     
     private func processFile(_ url: URL) {
+        // Validate authentication before processing
+        guard AuthenticationService.shared.validateAuthentication() else {
+            // Authentication invalid - logout and redirect
+            AuthenticationService.shared.signOutAndRedirect(
+                appState: appState,
+                reason: "Your session has expired. Please sign in again to upload activities."
+            )
+            return
+        }
+        
         guard let userId = appState.currentUserId else {
+            // This shouldn't happen if validateAuthentication passed, but handle it
             errorMessage = "You must be signed in to upload activities"
+            AuthenticationService.shared.signOutAndRedirect(
+                appState: appState,
+                reason: "Please sign in to upload activities."
+            )
             return
         }
         
@@ -211,7 +226,7 @@ struct ActivityUploadView: View {
                 let activity = try await activityService.parseActivityFile(from: url, userId: userId)
                 
                 // Save to SwiftData
-                try await activityService.saveActivity(activity, modelContext: modelContext)
+                try await activityService.saveActivity(activity, modelContext: modelContext, appState: appState)
                 
                 await MainActor.run {
                     importedActivity = activity

@@ -5,11 +5,13 @@
 //  Created on 10/27/25.
 //
 
+import SwiftData
 import SwiftUI
 
 struct SignUpView: View {
     @Binding var path: NavigationPath
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -250,6 +252,26 @@ struct SignUpView: View {
                     appState.isAuthenticated = true
                     appState.currentUserId = session.userId
                     path = NavigationPath() // Clear navigation stack
+                    
+                    // Sync activities from backend after sign-in
+                    Task {
+                        do {
+                            try await ActivityService.shared.syncActivitiesFromBackend(
+                                for: session.userId,
+                                modelContext: modelContext,
+                                appState: appState
+                            )
+                            // Retry any pending activities that failed to sync
+                            await ActivityService.shared.syncPendingActivities(
+                                for: session.userId,
+                                modelContext: modelContext,
+                                appState: appState
+                            )
+                        } catch {
+                            // Log error but don't block sign-in (auth errors will have already logged out)
+                            print("Failed to sync activities after sign-in: \(error.localizedDescription)")
+                        }
+                    }
                 } else {
                     // User exists but no profile - navigate to profile creation
                     print("ℹ️ Existing user needs to complete profile")

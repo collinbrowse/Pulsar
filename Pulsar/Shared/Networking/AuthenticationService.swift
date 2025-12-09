@@ -42,7 +42,8 @@ final class AuthenticationService {
     }
     
     /// Refresh the access token if it's expired or about to expire
-    func refreshTokenIfNeeded() async throws {
+    /// - Parameter appState: Optional app state to update if refresh fails (for immediate UI update)
+    func refreshTokenIfNeeded(appState: AppState? = nil) async throws {
         guard let session = currentSession else {
             throw AuthError.notAuthenticated
         }
@@ -63,16 +64,46 @@ final class AuthenticationService {
             try saveSession(newSession)
             
             logger.info("✅ Token refreshed successfully")
+        } catch let networkError as NetworkError {
+            logger.error("❌ Failed to refresh token: \(networkError.localizedDescription)")
+            
+            // Determine error message based on error type
+            let errorMessage: String
+            if case .httpError(let statusCode, let errorCode, let message) = networkError {
+                if statusCode == 400 && errorCode == "invalid_credentials" {
+                    errorMessage = "Your session has expired. Please sign in again."
+                } else {
+                    errorMessage = message ?? "Your session has expired. Please sign in again."
+                }
+            } else {
+                errorMessage = "Your session has expired. Please sign in again."
+            }
+            
+            // If appState is provided, immediately update UI and redirect
+            if let appState = appState {
+                signOutAndRedirect(appState: appState, reason: errorMessage)
+            } else {
+                // Fallback: just clear session
+                signOut()
+            }
+            throw AuthError.notAuthenticated
         } catch {
             logger.error("❌ Failed to refresh token: \(error.localizedDescription)")
-            // If refresh fails, clear session and require re-authentication
-            signOut()
+            
+            // If appState is provided, immediately update UI and redirect
+            if let appState = appState {
+                signOutAndRedirect(appState: appState, reason: "Your session has expired. Please sign in again.")
+            } else {
+                // Fallback: just clear session
+                signOut()
+            }
             throw AuthError.notAuthenticated
         }
     }
     
     /// Get a valid access token, refreshing if necessary
-    func getValidAccessToken() async throws -> String {
+    /// - Parameter appState: Optional app state to update if authentication fails (for immediate UI update)
+    func getValidAccessToken(appState: AppState? = nil) async throws -> String {
         // Ensure session is restored from Keychain first
         if currentSession == nil {
             restoreSession()
@@ -80,12 +111,20 @@ final class AuthenticationService {
         
         guard currentSession != nil else {
             logger.error("❌ No session found when trying to get access token")
+            // If appState is provided, immediately update UI
+            if let appState = appState {
+                signOutAndRedirect(appState: appState, reason: "You must be signed in to perform this action.")
+            }
             throw AuthError.notAuthenticated
         }
         
-        try await refreshTokenIfNeeded()
+        try await refreshTokenIfNeeded(appState: appState)
         guard let token = accessToken else {
             logger.error("❌ Access token is nil after refresh")
+            // If appState is provided, immediately update UI
+            if let appState = appState {
+                signOutAndRedirect(appState: appState, reason: "Your session has expired. Please sign in again.")
+            }
             throw AuthError.notAuthenticated
         }
         return token
@@ -157,6 +196,25 @@ final class AuthenticationService {
         return session
     }
     
+    // MARK: - Authentication Validation
+    
+    /// Validates that the user is authenticated
+    /// Returns true if authenticated, false otherwise
+    func validateAuthentication() -> Bool {
+        // Ensure session is restored from Keychain first
+        if currentSession == nil {
+            restoreSession()
+        }
+        return currentSession != nil
+    }
+    
+    /// Requires authentication, throws if not authenticated
+    func requireAuthentication() throws {
+        guard validateAuthentication() else {
+            throw AuthError.notAuthenticated
+        }
+    }
+    
     // MARK: - Sign Out
     
     func signOut() {
@@ -165,6 +223,30 @@ final class AuthenticationService {
         keychain.delete(key: sessionKey)
         
         ObservabilityManager.shared.track(event: "user_signed_out")
+    }
+    
+    /// Sign out user and update app state to redirect to login
+    /// - Parameters:
+    ///   - appState: The app state to update
+    ///   - reason: Optional error message to display on login screen
+    func signOutAndRedirect(appState: AppState, reason: String?) {
+        logger.info("Signing out user and redirecting to login")
+        
+        // Clear session
+        signOut()
+        
+        // Update app state on MainActor to trigger UI changes
+        Task { @MainActor in
+            appState.isAuthenticated = false
+            appState.currentUserId = nil
+            
+            // Store error message for display on login screen
+            if let reason = reason {
+                appState.authErrorMessage = reason
+            }
+            
+            logger.info("User signed out, redirecting to login screen")
+        }
     }
     
     // MARK: - Session Persistence

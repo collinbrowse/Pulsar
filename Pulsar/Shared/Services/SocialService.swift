@@ -167,7 +167,8 @@ final class SocialService {
     func giveKudo(
         userId: String,
         activityId: String,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        appState: AppState? = nil
     ) async throws {
         logger.info("❤️ Giving kudo to activity: \(activityId)")
         
@@ -191,7 +192,7 @@ final class SocialService {
         
         // Sync to backend
         do {
-            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken(appState: appState)
             let dto = kudo.toDTO()
             try await SupabaseClient.shared.upsert(
                 table: "kudos",
@@ -215,7 +216,8 @@ final class SocialService {
     func removeKudo(
         userId: String,
         activityId: String,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        appState: AppState? = nil
     ) async throws {
         logger.info("❤️ Removing kudo from activity: \(activityId)")
         
@@ -233,7 +235,7 @@ final class SocialService {
         
         // Delete from backend first (before local delete)
         do {
-            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken(appState: appState)
             try await SupabaseClient.shared.delete(
                 table: "kudos",
                 filter: ["id": kudo.id],
@@ -291,7 +293,8 @@ final class SocialService {
         userId: String,
         activityId: String,
         text: String,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        appState: AppState? = nil
     ) async throws {
         logger.info("💬 Adding comment to activity: \(activityId)")
         
@@ -306,7 +309,7 @@ final class SocialService {
         
         // Sync to backend
         do {
-            let accessToken = try await AuthenticationService.shared.getValidAccessToken()
+            let accessToken = try await AuthenticationService.shared.getValidAccessToken(appState: appState)
             let dto = comment.toDTO()
             try await SupabaseClient.shared.upsert(
                 table: "comments",

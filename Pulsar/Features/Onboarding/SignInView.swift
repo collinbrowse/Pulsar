@@ -5,11 +5,13 @@
 //  Created on 10/27/25.
 //
 
+import SwiftData
 import SwiftUI
 
 struct SignInView: View {
     @Binding var path: NavigationPath
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
@@ -64,8 +66,13 @@ struct SignInView: View {
                             .accessibilityIdentifier("Password")
                     }
                     
-                    // Error Message
-                    if let errorMessage {
+                    // Error Message (from appState or local)
+                    if let authError = appState.authErrorMessage {
+                        Text(authError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if let errorMessage {
                         Text(errorMessage)
                             .font(.caption)
                             .foregroundStyle(.red)
@@ -132,8 +139,17 @@ struct SignInView: View {
                 Spacer()
             }
         }
-        .navigationTitle("Sign In")
-        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Sign In")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Clear auth error message after displaying
+                if appState.authErrorMessage != nil {
+                    // Clear after a delay to ensure user sees it
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        appState.authErrorMessage = nil
+                    }
+                }
+            }
     }
     
     // MARK: - Actions
@@ -150,12 +166,35 @@ struct SignInView: View {
                 let profiles: [ProfileDTO] = try await authService.fetchProfiles(userId: session.userId)
                 
                 await MainActor.run {
+                    // Clear any auth error message on successful sign-in
+                    appState.authErrorMessage = nil
+                    
                     if let existingProfile = profiles.first {
                         // Profile exists - user is fully set up
                         print("Existing profile found: \(existingProfile.username)")
                         appState.isAuthenticated = true
                         appState.currentUserId = session.userId
                         // TODO: Load profile into SwiftData
+                        
+                        // Sync activities from backend after sign-in
+                        Task {
+                            do {
+                                try await ActivityService.shared.syncActivitiesFromBackend(
+                                    for: session.userId,
+                                    modelContext: modelContext,
+                                    appState: appState
+                                )
+                                // Retry any pending activities that failed to sync
+                                await ActivityService.shared.syncPendingActivities(
+                                    for: session.userId,
+                                    modelContext: modelContext,
+                                    appState: appState
+                                )
+                            } catch {
+                                // Log error but don't block sign-in (auth errors will have already logged out)
+                                print("Failed to sync activities after sign-in: \(error.localizedDescription)")
+                            }
+                        }
                     } else {
                         // No profile - navigate to profile creation
                         print("No profile found - navigating to profile creation")

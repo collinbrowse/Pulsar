@@ -203,7 +203,8 @@ struct FeedCard: View {
                     try await socialService.removeKudo(
                         userId: userId,
                         activityId: item.activity.id,
-                        modelContext: modelContext
+                        modelContext: modelContext,
+                        appState: appState
                     )
                     await MainActor.run {
                         hasKudoed = false
@@ -213,7 +214,8 @@ struct FeedCard: View {
                     try await socialService.giveKudo(
                         userId: userId,
                         activityId: item.activity.id,
-                        modelContext: modelContext
+                        modelContext: modelContext,
+                        appState: appState
                     )
                     await MainActor.run {
                         hasKudoed = true
@@ -326,7 +328,8 @@ struct CommentSection: View {
                     userId: userId,
                     activityId: activityId,
                     text: commentText,
-                    modelContext: modelContext
+                    modelContext: modelContext,
+                    appState: appState
                 )
                 
                 await MainActor.run {
