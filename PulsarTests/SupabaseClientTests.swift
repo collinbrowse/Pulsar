@@ -14,7 +14,7 @@ import Testing
 struct SupabaseClientTests {
     @Test("Supabase client should be initialized")
     func testClientInitialization() async throws {
-        let client = SupabaseClient.shared
+        _ = SupabaseClient.shared
         // Client is a singleton, so it's always initialized
         // Verify client has valid configuration
         let env = AppEnvironment.shared

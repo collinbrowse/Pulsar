@@ -54,7 +54,17 @@ git commit -m "chore: unrelated changes"
 git checkout -b feature/new-work
 ```
 
-## Pre-Commit Hooks
+## Pre-Commit Requirements
+
+### Test Execution Requirement
+
+**MANDATORY: All tests must pass before committing.**
+
+- **You must run the full test suite before every commit**
+- **Verify output shows "** TEST SUCCEEDED **"**
+- **If any tests fail, fix them before committing**
+- **If tests cannot be run (build errors, missing dependencies, etc.), pause and ask the user for guidance**
+- **Never commit work with untested or failing tests**
 
 ### Code Quality Gates
 
@@ -230,12 +240,20 @@ feat: add tests
 
 ### Before Committing
 
+**CRITICAL: You must NEVER commit any work unless all tests have been run and all of them pass.**
+
+**If tests cannot be run (e.g., build errors, missing dependencies, test infrastructure issues), you MUST pause and ask the user for more information before continuing. Do not commit work with untested or failing tests.**
+
 **Complete this checklist:**
 
 - [ ] Created feature branch
 - [ ] Only relevant files staged (`git diff --cached --name-only`)
 - [ ] SwiftLint passes on staged files (`swiftlint`)
-- [ ] All tests pass (run test suite)
+- [ ] **ALL tests pass (run full test suite - this is MANDATORY)**
+  - Run: `xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 17'`
+  - Verify output shows "** TEST SUCCEEDED **"
+  - If any tests fail, fix them before committing
+  - If tests cannot be run, pause and ask user for guidance
 - [ ] Build succeeds (`xcodebuild build`)
 - [ ] Commit message follows semantic format
 - [ ] Commit message includes detailed description
@@ -399,9 +417,12 @@ git commit -m "feat: new feature"
 - ✅ Run linting early and often during development
 - ✅ Stage files selectively - verify with `git diff --cached`
 - ✅ Write detailed commit messages with phase breakdowns
+- ✅ **ALWAYS run all tests before committing - this is MANDATORY**
+- ✅ Verify test output shows "** TEST SUCCEEDED **" before committing
 - ✅ Test and build before committing
 - ✅ Fix violations incrementally, not all at once
 - ✅ Use `git stash` to manage unrelated changes
+- ✅ If tests cannot be run, pause and ask user for guidance before proceeding
 
 ### Don'ts
 
@@ -410,7 +431,9 @@ git commit -m "feat: new feature"
 - ❌ Don't ignore SwiftLint violations
 - ❌ Don't write vague commit messages
 - ❌ Don't skip the pre-commit checklist
-- ❌ Don't commit without running tests
+- ❌ **NEVER commit without running all tests and verifying they all pass**
+- ❌ **NEVER commit if tests fail - fix them first**
+- ❌ **NEVER commit if tests cannot be run - ask user for guidance first**
 - ❌ Don't force-commit to bypass hooks
 
 ## Integration with CI/CD
