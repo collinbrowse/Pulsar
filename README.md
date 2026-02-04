@@ -6,9 +6,9 @@ A production-quality iOS app for activity tracking and social fitness, built wit
 
 ### Prerequisites
 
-- **Xcode 26** or later
-- **iOS 26.0** SDK
-- **macOS 15** (Sonoma) or later
+- **Xcode 16.1** or later
+- **iOS 17.0** SDK or later
+- **macOS 14** (Sonoma) or later
 
 ### Setup
 
