@@ -74,6 +74,7 @@ struct PulsarApp: App {
     }
     
     private func configureAppearance() {
+        #if os(iOS)
         // Configure tab bar appearance
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithDefaultBackground()
@@ -85,5 +86,6 @@ struct PulsarApp: App {
         navBarAppearance.configureWithDefaultBackground()
         UINavigationBar.appearance().standardAppearance = navBarAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
+        #endif
     }
 }

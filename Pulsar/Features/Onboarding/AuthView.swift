@@ -55,7 +55,7 @@ struct AuthView: View {
                     // Divider
                     HStack {
                         Rectangle()
-                            .fill(Color(.separator))
+                            .fill(Color.separator)
                             .frame(height: 1)
                         
                         Text("or")
@@ -64,7 +64,7 @@ struct AuthView: View {
                             .padding(.horizontal, Spacing.sm)
                         
                         Rectangle()
-                            .fill(Color(.separator))
+                            .fill(Color.separator)
                             .frame(height: 1)
                     }
                     .padding(.horizontal, Spacing.lg)

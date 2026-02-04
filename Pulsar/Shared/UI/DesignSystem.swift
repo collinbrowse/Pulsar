@@ -59,10 +59,12 @@ extension Color {
     static let textPrimary = Color(.label)
     static let textSecondary = Color(.secondaryLabel)
     static let textTertiary = Color(.tertiaryLabel)
+    static let separator = Color(.separator)
     #else
     static let textPrimary = Color(nsColor: .labelColor)
     static let textSecondary = Color(nsColor: .secondaryLabelColor)
     static let textTertiary = Color(nsColor: .tertiaryLabelColor)
+    static let separator = Color(nsColor: .separatorColor)
     #endif
     
     // MARK: - Hex Initializer
@@ -215,31 +217,45 @@ extension Animation {
 
 // MARK: - Haptics
 
-#if os(iOS)
 enum HapticFeedback {
-    static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
-        let generator = UIImpactFeedbackGenerator(style: style)
+    enum ImpactStyle { case light, medium, heavy, soft, rigid }
+    enum NotificationType { case success, warning, error }
+    
+    static func impact(_ style: ImpactStyle = .medium) {
+        #if os(iOS)
+        let uiStyle: UIImpactFeedbackGenerator.FeedbackStyle
+        switch style {
+        case .light: uiStyle = .light
+        case .medium: uiStyle = .medium
+        case .heavy: uiStyle = .heavy
+        case .soft: uiStyle = .soft
+        case .rigid: uiStyle = .rigid
+        }
+        let generator = UIImpactFeedbackGenerator(style: uiStyle)
         generator.impactOccurred()
+        #endif
     }
     
-    static func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+    static func notification(_ type: NotificationType) {
+        #if os(iOS)
+        let uiType: UINotificationFeedbackGenerator.FeedbackType
+        switch type {
+        case .success: uiType = .success
+        case .warning: uiType = .warning
+        case .error: uiType = .error
+        }
         let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(type)
+        generator.notificationOccurred(uiType)
+        #endif
     }
     
     static func selection() {
+        #if os(iOS)
         let generator = UISelectionFeedbackGenerator()
         generator.selectionChanged()
+        #endif
     }
 }
-#else
-// No-op haptics for macOS
-enum HapticFeedback {
-    static func impact(_ style: Any? = nil) {}
-    static func notification(_ type: Any) {}
-    static func selection() {}
-}
-#endif
 
 // MARK: - Activity Type Helpers
 
