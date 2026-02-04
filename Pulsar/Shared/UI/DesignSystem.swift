@@ -14,16 +14,7 @@ import AppKit
 
 extension Color {
     // MARK: - Brand Colors
-    // Note: pulsarPrimary and pulsarSecondary are auto-generated from asset catalog
-    // in Xcode 26+. We provide fallbacks for older Xcode versions.
-    
-    #if swift(<6.0)
-    /// Primary brand color - vibrant orange/coral
-    static let pulsarPrimary = Color("PulsarPrimary")
-    
-    /// Secondary brand color - deep purple
-    static let pulsarSecondary = Color("PulsarSecondary")
-    #endif
+    // pulsarPrimary and pulsarSecondary are auto-generated from asset catalog in Xcode 26+
     
     /// Accent gradient start
     static let gradientStart = Color(hex: "FF6B35")
