@@ -6,17 +6,24 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 // MARK: - Color Palette
 
 extension Color {
     // MARK: - Brand Colors
+    // Note: pulsarPrimary and pulsarSecondary are auto-generated from asset catalog
+    // in Xcode 26+. We provide fallbacks for older Xcode versions.
     
+    #if swift(<6.0)
     /// Primary brand color - vibrant orange/coral
     static let pulsarPrimary = Color("PulsarPrimary")
     
     /// Secondary brand color - deep purple
     static let pulsarSecondary = Color("PulsarSecondary")
+    #endif
     
     /// Accent gradient start
     static let gradientStart = Color(hex: "FF6B35")
@@ -45,15 +52,27 @@ extension Color {
     
     // MARK: - Background Colors
     
+    #if os(iOS)
     static let cardBackground = Color(.systemBackground)
     static let elevatedBackground = Color(.secondarySystemBackground)
     static let tertiaryBackground = Color(.tertiarySystemBackground)
+    #else
+    static let cardBackground = Color(nsColor: .windowBackgroundColor)
+    static let elevatedBackground = Color(nsColor: .controlBackgroundColor)
+    static let tertiaryBackground = Color(nsColor: .underPageBackgroundColor)
+    #endif
     
     // MARK: - Text Colors
     
+    #if os(iOS)
     static let textPrimary = Color(.label)
     static let textSecondary = Color(.secondaryLabel)
     static let textTertiary = Color(.tertiaryLabel)
+    #else
+    static let textPrimary = Color(nsColor: .labelColor)
+    static let textSecondary = Color(nsColor: .secondaryLabelColor)
+    static let textTertiary = Color(nsColor: .tertiaryLabelColor)
+    #endif
     
     // MARK: - Hex Initializer
     
@@ -205,6 +224,7 @@ extension Animation {
 
 // MARK: - Haptics
 
+#if os(iOS)
 enum HapticFeedback {
     static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
         let generator = UIImpactFeedbackGenerator(style: style)
@@ -221,6 +241,14 @@ enum HapticFeedback {
         generator.selectionChanged()
     }
 }
+#else
+// No-op haptics for macOS
+enum HapticFeedback {
+    static func impact(_ style: Any? = nil) {}
+    static func notification(_ type: Any) {}
+    static func selection() {}
+}
+#endif
 
 // MARK: - Activity Type Helpers
 

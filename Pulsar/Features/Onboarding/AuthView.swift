@@ -262,7 +262,9 @@ struct AuthTextField: View {
     let icon: String
     let placeholder: String
     @Binding var text: String
+    #if os(iOS)
     var keyboardType: UIKeyboardType = .default
+    #endif
     var isSecure: Bool = false
     
     @State private var isPasswordVisible = false
@@ -276,12 +278,16 @@ struct AuthTextField: View {
             
             if isSecure && !isPasswordVisible {
                 SecureField(placeholder, text: $text)
+                    #if os(iOS)
                     .textContentType(placeholder.contains("Confirm") ? .newPassword : .password)
+                    #endif
             } else {
                 TextField(placeholder, text: $text)
+                    #if os(iOS)
                     .keyboardType(keyboardType)
                     .textContentType(keyboardType == .emailAddress ? .emailAddress : .none)
                     .autocapitalization(keyboardType == .emailAddress ? .none : .words)
+                    #endif
             }
             
             if isSecure {
