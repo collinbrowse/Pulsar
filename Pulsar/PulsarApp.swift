@@ -2,7 +2,7 @@
 //  PulsarApp.swift
 //  Pulsar
 //
-//  Created by Collin Browse on 10/27/25.
+//  Main app entry point
 //
 
 import SwiftUI
@@ -17,9 +17,19 @@ struct PulsarApp: App {
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Profile.self,
+            Activity.self,
+            Segment.self,
+            SegmentEffort.self,
+            Follow.self,
+            Kudos.self,
+            Comment.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -34,7 +44,7 @@ struct PulsarApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
                 .environment(appState)
         }
         .modelContainer(sharedModelContainer)
@@ -57,6 +67,23 @@ struct PulsarApp: App {
             logger.warning("Environment not fully configured - check API keys")
         }
         
+        // Configure appearance
+        configureAppearance()
+        
         logger.info("Pulsar app configured")
+    }
+    
+    private func configureAppearance() {
+        // Configure tab bar appearance
+        let tabBarAppearance = UITabBarAppearance()
+        tabBarAppearance.configureWithDefaultBackground()
+        UITabBar.appearance().standardAppearance = tabBarAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+        
+        // Configure navigation bar appearance
+        let navBarAppearance = UINavigationBarAppearance()
+        navBarAppearance.configureWithDefaultBackground()
+        UINavigationBar.appearance().standardAppearance = navBarAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
     }
 }
