@@ -6,13 +6,9 @@ A production-quality iOS app for activity tracking and social fitness, built wit
 
 ### Prerequisites
 
-- **Xcode 26** or later (required for new synchronized groups feature)
-- **iOS 17.0** SDK or later
-- **macOS 14** (Sonoma) or later
-
-> **Note**: This project uses Xcode 26's new file system synchronized groups feature. 
-> Until Xcode 26 is available on CI platforms, automated builds are limited to 
-> linting and code quality checks.
+- **Xcode 26** or later
+- **iOS 26.0** SDK
+- **macOS 15** (Sonoma) or later
 
 ### Setup
 

@@ -7,8 +7,7 @@ Pulsar is a production-quality iOS app for activity tracking and social fitness,
 ## Tech Stack
 
 ### iOS App
-- **Platform**: iOS 17+ (Xcode 26, Swift 6.2)
-- **Note**: Project uses Xcode 26's synchronized groups feature
+- **Platform**: iOS 26+ (Xcode 26, Swift 6.2)
 - **UI Framework**: SwiftUI (latest APIs)
 - **State Management**: TCA (The Composable Architecture)
 - **Persistence**: SwiftData
