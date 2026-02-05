@@ -191,15 +191,14 @@ struct SettingsView: View {
     }
     
     private func signOut() {
-        appState.isAuthenticated = false
-        appState.currentUserID = nil
-        appState.userProfile = nil
+        SettingsFlow.signOut(appState: appState)
         HapticFeedback.notification(.success)
     }
     
     private func deleteAccount() {
-        // In production, call API to delete account
-        signOut()
+        // In production, call API to delete account and then clear state.
+        SettingsFlow.deleteAccount(appState: appState)
+        HapticFeedback.notification(.success)
     }
 }
 

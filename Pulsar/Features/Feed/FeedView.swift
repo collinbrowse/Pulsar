@@ -109,13 +109,13 @@ struct FeedView: View {
     }
     
     private func toggleKudos(for activity: ActivityData) {
-        guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { return }
-        
         HapticFeedback.impact(.light)
         
         withAnimation(.pulsarSpring) {
-            activities[index].hasKudos.toggle()
-            activities[index].kudosCount += activities[index].hasKudos ? 1 : -1
+            activities = FeedFlow.toggleKudos(
+                activities: activities,
+                for: activity.id
+            )
         }
     }
 }

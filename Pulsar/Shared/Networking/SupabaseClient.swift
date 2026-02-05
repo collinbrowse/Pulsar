@@ -7,9 +7,30 @@
 
 import Foundation
 
+// MARK: - Protocol
+
+/// Abstraction for Supabase networking so that higher-level flows can be tested
+/// against mock implementations without hitting the real network.
+@MainActor
+protocol SupabaseClientProtocol {
+    func signUp(email: String, password: String, metadata: [String: String]) async throws -> User
+    func signIn(email: String, password: String) async throws -> Session
+    func fetch<T: Decodable>(
+        from table: String,
+        select: String,
+        filter: [String: String],
+        accessToken: String?
+    ) async throws -> [T]
+    func callFunction(
+        name: String,
+        body: Data?,
+        accessToken: String?
+    ) async throws -> Data
+}
+
 /// Supabase API client for backend communication
 @MainActor
-final class SupabaseClient {
+final class SupabaseClient: SupabaseClientProtocol {
     static let shared = SupabaseClient()
     
     private let baseURL: URL

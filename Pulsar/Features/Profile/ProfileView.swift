@@ -131,26 +131,22 @@ struct ProfileView: View {
     // MARK: - Computed Properties
     
     private var filteredActivities: [ActivityData] {
-        var result = activities
-        
-        if let type = selectedActivityType {
-            result = result.filter { $0.type == type }
-        }
-        
-        // In production, filter by time range
-        return result
+        ProfileAnalytics.filteredActivities(
+            activities,
+            type: selectedActivityType
+        )
     }
     
     private var totalDistance: Double {
-        filteredActivities.reduce(0) { $0 + $1.distanceMeters }
+        ProfileAnalytics.totalDistance(for: filteredActivities)
     }
     
     private var totalTime: Int {
-        filteredActivities.reduce(0) { $0 + $1.durationSeconds }
+        ProfileAnalytics.totalTime(for: filteredActivities)
     }
     
     private var totalElevation: Double {
-        filteredActivities.compactMap { $0.elevationGainMeters }.reduce(0, +)
+        ProfileAnalytics.totalElevation(for: filteredActivities)
     }
     
     // MARK: - Data Loading

@@ -84,22 +84,11 @@ struct SegmentsView: View {
     }
     
     private var filteredSegments: [SegmentData] {
-        var result = segments
-        
-        if selectedTab == .starred {
-            result = result.filter { $0.isStarred }
-        } else if selectedTab == .mySegments {
-            result = result.filter { $0.isCreatedByMe }
-        }
-        
-        if !searchText.isEmpty {
-            result = result.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText) ||
-                ($0.city?.localizedCaseInsensitiveContains(searchText) ?? false)
-            }
-        }
-        
-        return result
+        SegmentsFlow.filteredSegments(
+            segments: segments,
+            tab: selectedTab,
+            searchText: searchText
+        )
     }
     
     private func loadSegments() async {

@@ -197,22 +197,19 @@ struct AuthView: View {
         errorMessage = nil
         
         do {
-            if isSignUp {
-                let user = try await SupabaseClient.shared.signUp(
-                    email: email,
-                    password: password,
-                    metadata: ["full_name": fullName]
-                )
-                appState.currentUserID = user.id
-                appState.isAuthenticated = true
-            } else {
-                let session = try await SupabaseClient.shared.signIn(
-                    email: email,
-                    password: password
-                )
-                appState.currentUserID = session.userId
-                appState.isAuthenticated = true
-            }
+            let mode: AuthMode = isSignUp ? .signUp : .signIn
+            let request = AuthRequest(
+                mode: mode,
+                email: email,
+                password: password,
+                fullName: fullName
+            )
+            
+            try await AuthFlow.authenticate(
+                request: request,
+                client: SupabaseClient.shared,
+                appState: appState
+            )
             
             HapticFeedback.notification(.success)
             dismiss()
