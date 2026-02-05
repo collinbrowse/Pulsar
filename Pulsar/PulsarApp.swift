@@ -5,9 +5,9 @@
 //  Main app entry point
 //
 
-import SwiftUI
-import SwiftData
 import OSLog
+import SwiftData
+import SwiftUI
 
 private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "App")
 
@@ -25,16 +25,47 @@ struct PulsarApp: App {
             Kudos.self,
             Comment.self
         ])
+        logger.debug("Initializing ModelContainer for SwiftData models")
+        
+        // Use in-memory store for UI tests to avoid disk/sandbox issues when run from Xcode
+        let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
+        
+        if isUITesting {
+            logger.debug("Running with in-memory store for UI tests")
+        }
+        
+        // CloudKit is disabled for this configuration
         let modelConfiguration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false,
+            isStoredInMemoryOnly: isUITesting,
             cloudKitDatabase: .none
         )
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            logger.info("ModelContainer initialized successfully (inMemory: \(isUITesting))")
+            return container
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Log the error with as much detail as SwiftData provides
+            logger.fault("Primary ModelContainer initialization failed: \(String(describing: error))")
+
+            // Attempt a safe fallback to an in-memory store to avoid crashing on launch
+            // This helps recover from migration/load issues on developer/test devices
+            let fallbackConfig = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
+            )
+
+            do {
+                let fallback = try ModelContainer(for: schema, configurations: [fallbackConfig])
+                logger.warning("Fell back to in-memory ModelContainer due to load issue. Persistent data will not be saved this run.")
+                return fallback
+            } catch {
+                // If even the in-memory container fails, there's likely a schema definition problem
+                logger.fault("Fallback in-memory ModelContainer failed: \(String(describing: error))")
+                preconditionFailure("Could not create any ModelContainer: \(error)")
+            }
         }
     }()
     

@@ -5,8 +5,8 @@
 //  Sign in and sign up authentication flow
 //
 
-import SwiftUI
 import AuthenticationServices
+import SwiftUI
 
 struct AuthView: View {
     @Environment(AppState.self) private var appState
@@ -250,8 +250,11 @@ struct AuthView: View {
                 }
             }
         case .failure(let error):
-            errorMessage = error.localizedDescription
-            showError = true
+            let message = error.localizedDescription
+            Task { @MainActor in
+                errorMessage = message
+                showError = true
+            }
         }
     }
 }

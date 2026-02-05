@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-enum Tab: String, CaseIterable {
-    case feed = "feed"
-    case segments = "segments"
-    case record = "record"
-    case profile = "profile"
-    case settings = "settings"
+enum Tab: String, CaseIterable, Sendable {
+    case feed
+    case segments
+    case record
+    case profile
+    case settings
     
     var title: String {
         switch self {

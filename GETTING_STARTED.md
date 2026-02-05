@@ -119,6 +119,17 @@ This is expected - we haven't configured API keys yet.
 xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 
+### Swift 6 Compliance
+
+The codebase is written for **Swift 6** with strict concurrency:
+
+- **Language mode**: In Xcode, set **Build Settings → Swift Language Version** to **Swift 6** (or leave default when using Xcode 16+).
+- **Strict concurrency**: With Swift 6, full concurrency checking is on by default. The project uses:
+  - `@MainActor` for UI and app state (`AppState`, `SupabaseClient`, `ObservabilityManager`, `FeatureFlags`)
+  - `Sendable` for types that cross isolation boundaries (models, errors, enums)
+  - No `[String: Any]` in public APIs; use `[String: String]` or `Data`/`Encodable` for Sendable safety
+- If you use an older Xcode with Swift 5, enable **Build Settings → Other Swift Flags**: `-strict-concurrency=complete` (warnings) to prepare for Swift 6.
+
 ### Run Linter
 
 ```bash

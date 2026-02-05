@@ -8,9 +8,10 @@
 import Foundation
 import Observation
 
-/// Root application state
+/// Root application state (main-actor isolated for Swift 6 concurrency)
+@MainActor
 @Observable
-final class AppState: Sendable {
+final class AppState {
     // MARK: - Authentication
     
     /// Whether the user is currently authenticated
@@ -50,6 +51,11 @@ final class AppState: Sendable {
     init() {
         // Load any persisted authentication state
         loadPersistedState()
+        // UI testing: allow launching in authenticated state
+        if ProcessInfo.processInfo.arguments.contains("--authenticated") {
+            isAuthenticated = true
+            currentUserID = "ui-test-user"
+        }
     }
     
     // MARK: - State Management
@@ -91,18 +97,5 @@ final class AppState: Sendable {
     
     private func clearPersistedState() {
         // In production, clear Keychain
-    }
-}
-
-/// User profile model for display purposes
-struct UserProfile: Sendable, Codable, Equatable {
-    let userID: String
-    let username: String
-    let fullName: String?
-    let avatarURL: String?
-    
-    /// Display name - prefers full name over username
-    var displayName: String {
-        fullName ?? username
     }
 }

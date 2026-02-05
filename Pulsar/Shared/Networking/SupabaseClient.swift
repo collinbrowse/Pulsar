@@ -9,7 +9,7 @@ import Foundation
 
 /// Supabase API client for backend communication
 @MainActor
-final class SupabaseClient: Sendable {
+final class SupabaseClient {
     static let shared = SupabaseClient()
     
     private let baseURL: URL
@@ -26,7 +26,7 @@ final class SupabaseClient: Sendable {
     
     // MARK: - Authentication
     
-    func signUp(email: String, password: String, metadata: [String: Any] = [:]) async throws -> User {
+    func signUp(email: String, password: String, metadata: [String: String] = [:]) async throws -> User {
         let endpoint = baseURL.appendingPathComponent("/auth/v1/signup")
         
         var request = URLRequest(url: endpoint)
@@ -96,10 +96,17 @@ final class SupabaseClient: Sendable {
     func fetch<T: Decodable>(
         from table: String,
         select: String = "*",
-        filter: [String: Any] = [:],
+        filter: [String: String] = [:],
         accessToken: String? = nil
     ) async throws -> [T] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/rest/v1/\(table)"), resolvingAgainstBaseURL: true)!
+        guard let baseComponents = URLComponents(
+            url: baseURL.appendingPathComponent("/rest/v1/\(table)"),
+            resolvingAgainstBaseURL: true
+        ) else {
+            throw NetworkError.invalidResponse
+        }
+        
+        var components = baseComponents
         
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "select", value: select)
@@ -111,7 +118,11 @@ final class SupabaseClient: Sendable {
         
         components.queryItems = queryItems
         
-        var request = URLRequest(url: components.url!)
+        guard let url = components.url else {
+            throw NetworkError.invalidResponse
+        }
+        
+        var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         
@@ -133,9 +144,10 @@ final class SupabaseClient: Sendable {
     
     // MARK: - Edge Functions
     
+    /// Calls a Supabase Edge Function. Pass pre-encoded JSON as `body` (e.g. `try JSONEncoder().encode(myPayload)`) for Swift 6 Sendable safety.
     func callFunction(
         name: String,
-        body: [String: Any]? = nil,
+        body: Data? = nil,
         accessToken: String? = nil
     ) async throws -> Data {
         let endpoint = baseURL.appendingPathComponent("/functions/v1/\(name)")
@@ -150,7 +162,7 @@ final class SupabaseClient: Sendable {
         }
         
         if let body = body {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.httpBody = body
         }
         
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -164,21 +176,9 @@ final class SupabaseClient: Sendable {
     }
 }
 
-// MARK: - Models
-
-struct User: Codable, Sendable {
-    let id: String
-    let email: String
-}
-
-struct Session: Codable, Sendable {
-    let accessToken: String
-    let userId: String
-}
-
 // MARK: - Errors
 
-enum NetworkError: Error, LocalizedError {
+enum NetworkError: Error, LocalizedError, Sendable {
     case invalidResponse
     case invalidData
     case httpError(statusCode: Int)
@@ -197,4 +197,3 @@ enum NetworkError: Error, LocalizedError {
         }
     }
 }
-

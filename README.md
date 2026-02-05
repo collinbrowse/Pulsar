@@ -70,6 +70,16 @@ xcodebuild test \
 
 Or simply press `Cmd+U` in Xcode to run all tests.
 
+**Production readiness (run before release)**
+
+1. **Unit tests**: `xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` (or your simulator)
+2. **UI tests**: `xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
+3. **Build**: `xcodebuild -scheme Pulsar -destination 'generic/platform=iOS Simulator' build`
+4. **Lint**: `swiftlint lint`
+5. **Security**: No `.env` or `.env.local` committed; no hardcoded `sk_live_`, `pk_live_`, `ghp_`, or `gho_` in Swift files.
+
+CI runs lint, security checks, and code-structure verification on push/PR. Full build and tests require local Xcode with iOS SDK.
+
 ## Architecture
 
 - **State Management**: TCA (The Composable Architecture)

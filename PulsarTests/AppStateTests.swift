@@ -5,13 +5,13 @@
 //  Tests for AppState
 //
 
-import Testing
 import Foundation
 @testable import Pulsar
+import Testing
 
 @Suite("App State Tests")
+@MainActor
 struct AppStateTests {
-    
     @Test("Initial app state should be unauthenticated")
     func testInitialState() async throws {
         let state = AppState()
