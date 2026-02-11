@@ -22,38 +22,27 @@ final class ObservabilityManager {
     func configure() {
         configureAnalytics()
         configureCrashlytics()
-        logger.info("Observability configured")
     }
     
     // MARK: - Analytics
     
     private func configureAnalytics() {
-        guard FeatureFlags.shared.enableAnalytics else {
-            logger.info("Analytics disabled via feature flag")
-            return
-        }
+        guard FeatureFlags.shared.enableAnalytics else { return }
         
         guard let apiKey = AppEnvironment.shared.postHogAPIKey, !apiKey.isEmpty else {
-            logger.warning("PostHog API key not configured")
+            logger.warning("[Pulsar] PostHog API key not set")
             return
         }
         
         // Analytics SDK integration point.
-        // When PostHog SDK is added to the project, initialize it here:
         // PostHog.setup(withAPIKey: apiKey)
-        logger.info("Analytics configured with PostHog")
     }
     
     private func configureCrashlytics() {
-        guard FeatureFlags.shared.enableCrashlytics else {
-            logger.info("Crashlytics disabled via feature flag")
-            return
-        }
+        guard FeatureFlags.shared.enableCrashlytics else { return }
         
         // Crash reporting SDK integration point.
-        // When Firebase Crashlytics is added to the project, configure it here:
         // FirebaseCrashlytics.configure()
-        logger.info("Crashlytics configured with Firebase")
     }
     
     // MARK: - Event Tracking

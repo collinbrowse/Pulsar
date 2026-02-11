@@ -11,6 +11,14 @@ import SwiftUI
 
 private let logger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "App")
 
+/// One-line summary for errors so we never dump NSError userInfo (e.g. Core Data model dumps) to the console.
+private func shortErrorSummary(_ error: Error) -> String {
+    let ns = error as NSError
+    let reason = (ns.userInfo[NSLocalizedFailureReasonErrorKey] as? String) ?? ns.localizedDescription
+    if reason.isEmpty { return "\(ns.domain) \(ns.code)" }
+    return "\(ns.domain) \(ns.code): \(reason)"
+}
+
 @main
 struct PulsarApp: App {
     @State private var appState = AppState()
@@ -25,46 +33,64 @@ struct PulsarApp: App {
             Kudos.self,
             Comment.self
         ])
-        logger.debug("Initializing ModelContainer for SwiftData models")
-        
-        // Use in-memory store for UI tests to avoid disk/sandbox issues when run from Xcode
         let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
         
-        if isUITesting {
-            logger.debug("Running with in-memory store for UI tests")
-        }
+        let defaultStoreURL: URL? = isUITesting ? nil : {
+            guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
+            return appSupport.appendingPathComponent("default.store")
+        }()
         
-        // CloudKit is disabled for this configuration
         let modelConfiguration = ModelConfiguration(
+            nil,
             schema: schema,
             isStoredInMemoryOnly: isUITesting,
+            allowsSave: true,
+            groupContainer: .automatic,
             cloudKitDatabase: .none
         )
 
+        func makeContainer() throws -> ModelContainer {
+            try ModelContainer(for: schema, configurations: [modelConfiguration])
+        }
+
         do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            logger.info("ModelContainer initialized successfully (inMemory: \(isUITesting))")
+            let container = try makeContainer()
+            logger.info("[Pulsar] Storage: \(isUITesting ? "in-memory (UI test)" : "on-disk")")
             return container
         } catch {
-            // Log the error with as much detail as SwiftData provides
-            logger.fault("Primary ModelContainer initialization failed: \(String(describing: error))")
+            logger.error("[Pulsar] Storage failed: \(shortErrorSummary(error))")
 
-            // Attempt a safe fallback to an in-memory store to avoid crashing on launch
-            // This helps recover from migration/load issues on developer/test devices
+            if let url = defaultStoreURL {
+                let fm = FileManager.default
+                let base = url.deletingPathExtension()
+                for ext in ["store", "store-wal", "store-shm"] {
+                    let fileURL = ext == "store" ? url : base.appendingPathExtension(ext)
+                    if fm.fileExists(atPath: fileURL.path) { try? fm.removeItem(at: fileURL) }
+                }
+                do {
+                    let container = try makeContainer()
+                    logger.info("[Pulsar] Storage: on-disk (recovered after store reset)")
+                    return container
+                } catch {
+                    logger.error("[Pulsar] Storage retry failed: \(shortErrorSummary(error))")
+                }
+            }
+
             let fallbackConfig = ModelConfiguration(
+                nil,
                 schema: schema,
                 isStoredInMemoryOnly: true,
+                allowsSave: true,
+                groupContainer: .automatic,
                 cloudKitDatabase: .none
             )
-
             do {
                 let fallback = try ModelContainer(for: schema, configurations: [fallbackConfig])
-                logger.warning("Fell back to in-memory ModelContainer due to load issue. Persistent data will not be saved this run.")
+                logger.warning("[Pulsar] Storage: in-memory fallback (data not persisted)")
                 return fallback
             } catch {
-                // If even the in-memory container fails, there's likely a schema definition problem
-                logger.fault("Fallback in-memory ModelContainer failed: \(String(describing: error))")
-                preconditionFailure("Could not create any ModelContainer: \(error)")
+                logger.fault("[Pulsar] Storage unrecoverable: \(shortErrorSummary(error))")
+                preconditionFailure("Could not create any ModelContainer: \(shortErrorSummary(error))")
             }
         }
     }()
@@ -84,24 +110,14 @@ struct PulsarApp: App {
     // MARK: - Configuration
     
     private func configureApp() {
-        logger.info("Pulsar app launching...")
-        
-        // Configure observability (analytics, crashlytics)
         Task { @MainActor in
             ObservabilityManager.shared.configure()
         }
-        
-        // Log configuration status
-        if AppEnvironment.shared.isConfigured {
-            logger.info("Environment configured successfully")
-        } else {
-            logger.warning("Environment not fully configured - check API keys")
-        }
-        
-        // Configure appearance
         configureAppearance()
-        
-        logger.info("Pulsar app configured")
+        if !AppEnvironment.shared.isConfigured {
+            logger.warning("[Pulsar] Environment not configured — check API keys")
+        }
+        logger.info("[Pulsar] Ready")
     }
     
     private func configureAppearance() {
