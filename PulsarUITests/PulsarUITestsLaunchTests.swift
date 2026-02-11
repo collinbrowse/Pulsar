@@ -19,6 +19,7 @@ final class PulsarUITestsLaunchTests: XCTestCase {
 
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["--uitesting"]
         app.launch()
 
         // Insert steps here to perform after app launch but before taking a screenshot,
@@ -32,16 +33,19 @@ final class PulsarUITestsLaunchTests: XCTestCase {
     
     func testLaunchPerformance() throws {
         if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
-            // This measures how long it takes to launch your application.
+            // Measures time to launch. Do not terminate the app inside the block—
+            // that can cause the test runner to exit before the metric is recorded.
             measure(metrics: [XCTApplicationLaunchMetric()]) {
-                XCUIApplication().launch()
+                let app = XCUIApplication()
+                app.launchArguments = ["--uitesting"]
+                app.launch()
             }
         }
     }
     
     func testLaunchDarkMode() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-UITraitCollectionUserInterfaceStyleDark", "2"]
+        app.launchArguments = ["--uitesting", "-UITraitCollectionUserInterfaceStyleDark", "2"]
         app.launch()
         
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -52,7 +56,7 @@ final class PulsarUITestsLaunchTests: XCTestCase {
     
     func testLaunchLightMode() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-UITraitCollectionUserInterfaceStyleLight", "1"]
+        app.launchArguments = ["--uitesting", "-UITraitCollectionUserInterfaceStyleLight", "1"]
         app.launch()
         
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -64,7 +68,7 @@ final class PulsarUITestsLaunchTests: XCTestCase {
     func testLaunchLargeText() throws {
         let app = XCUIApplication()
         // Test with accessibility large text
-        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
+        app.launchArguments = ["--uitesting", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
         app.launch()
         
         let attachment = XCTAttachment(screenshot: app.screenshot())

@@ -85,18 +85,24 @@ final class PulsarUITests: XCTestCase {
     func testAuthScreenElements() throws {
         app.launch()
         
-        // Navigate to auth
+        // Navigate to auth (onboarding → Get Started → fullScreenCover AuthView)
         navigateToAuth()
         
-        // Check for key elements
-        let emailField = app.textFields["Email"]
-        let passwordField = app.secureTextFields["Password"]
-        let signInAppleButton = app.buttons["Sign in with Apple"]
+        // Allow fullScreenCover to present (animation + hierarchy update)
+        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "pause")], timeout: 1.5)
+
+        // fullScreenCover can take a moment; wait for title or key elements
+        let authVisible = waitForAuthScreen(timeout: 10)
+        XCTAssertTrue(authVisible, "Auth screen did not appear after navigating from onboarding")
         
-        // At least some elements should be present
-        XCTAssertTrue(emailField.waitForExistence(timeout: 3) || 
-                     passwordField.waitForExistence(timeout: 3) ||
-                     signInAppleButton.waitForExistence(timeout: 3))
+        // At least one key element should be present (identifier or type)
+        let emailField = app.textFields["AuthEmailField"]
+        let passwordField = app.secureTextFields["AuthPasswordField"]
+        let signInAppleButton = app.buttons["AuthAppleButton"]
+        let hasElement = emailField.waitForExistence(timeout: 3) ||
+                        passwordField.waitForExistence(timeout: 2) ||
+                        signInAppleButton.waitForExistence(timeout: 2)
+        XCTAssertTrue(hasElement, "Expected at least one of email field, password field, or Sign in with Apple button on auth screen")
     }
     
     func testAuthToggleSignInSignUp() throws {
@@ -197,14 +203,21 @@ final class PulsarUITests: XCTestCase {
         
         // Wait for feed to load
         let feedTitle = app.navigationBars["Feed"]
-        if feedTitle.waitForExistence(timeout: 5) {
-            // Perform pull to refresh
-            let firstCell = app.scrollViews.firstMatch
-            firstCell.swipeDown()
-            
-            // App should not crash
-            XCTAssertTrue(feedTitle.exists)
+        XCTAssertTrue(feedTitle.waitForExistence(timeout: 5), "Feed screen did not appear")
+        
+        // Feed may show loading then empty state (no network in UI tests). SwiftUI ScrollView
+        // is not reliably exposed as XCUIElementTypeScrollView; use coordinate drag or empty state.
+        let emptyStateTitle = app.staticTexts["No Activities Yet"]
+        if emptyStateTitle.waitForExistence(timeout: 8) {
+            XCTAssertTrue(emptyStateTitle.exists)
+        } else {
+            // Content or still loading: trigger pull via coordinate drag (avoids ScrollView query)
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.3, thenDragTo: end)
         }
+        
+        XCTAssertTrue(feedTitle.exists, "App should still show Feed after pull/empty check")
     }
     
     // MARK: - Import Tests
@@ -238,15 +251,34 @@ final class PulsarUITests: XCTestCase {
     // MARK: - Helper Methods
     
     private func navigateToAuth() {
-        // Navigate through onboarding to auth
+        // Navigate through onboarding to auth (3 pages; Skip jumps to last)
         let skipButton = app.buttons["Skip"]
-        if skipButton.waitForExistence(timeout: 5) {
+        if skipButton.waitForExistence(timeout: 5), skipButton.isHittable {
             skipButton.tap()
+        } else {
+            for _ in 0..<2 {
+                let continueButton = app.buttons["Continue"]
+                if continueButton.waitForExistence(timeout: 3), continueButton.isHittable {
+                    continueButton.tap()
+                }
+            }
         }
         
         let getStartedButton = app.buttons["Get Started"]
-        if getStartedButton.waitForExistence(timeout: 5) {
+        if getStartedButton.waitForExistence(timeout: 5), getStartedButton.isHittable {
             getStartedButton.tap()
+            // Brief wait for fullScreenCover to start presenting
+            _ = XCTWaiter.wait(for: [XCTestExpectation(description: "sheet")], timeout: 1.0)
         }
     }
+
+    private func waitForAuthScreen(timeout: TimeInterval = 5) -> Bool {
+        // Prefer identifier; fall back to static text (sheet can be slow to present)
+        let authTitle = app.staticTexts["AuthScreenTitle"]
+        if authTitle.waitForExistence(timeout: timeout) { return true }
+        let createAccountTitle = app.staticTexts["Create Account"]
+        if createAccountTitle.waitForExistence(timeout: 2) { return true }
+        return app.staticTexts["Welcome Back"].waitForExistence(timeout: 2)
+    }
+
 }

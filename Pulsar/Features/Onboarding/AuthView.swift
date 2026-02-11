@@ -41,6 +41,7 @@ struct AuthView: View {
                         Text(isSignUp ? "Create Account" : "Welcome Back")
                             .font(.displaySmall)
                             .foregroundStyle(Color.textPrimary)
+                            .accessibilityIdentifier("AuthScreenTitle")
                         
                         Text(isSignUp ? "Start your fitness journey" : "Sign in to continue")
                             .font(.bodyMedium)
@@ -56,6 +57,7 @@ struct AuthView: View {
                     }
                     .signInWithAppleButtonStyle(.black)
                     .frame(height: 56)
+                    .accessibilityIdentifier("AuthAppleButton")
                     .clipShape(RoundedRectangle(cornerRadius: CornerRadius.medium))
                     .padding(.horizontal, Spacing.lg)
                     
@@ -82,7 +84,8 @@ struct AuthView: View {
                             AuthTextField(
                                 icon: "person",
                                 placeholder: "Full Name",
-                                text: $fullName
+                                text: $fullName,
+                                accessibilityIdentifier: "AuthFullNameField"
                             )
                         }
                         
@@ -90,14 +93,16 @@ struct AuthView: View {
                             icon: "envelope",
                             placeholder: "Email",
                             text: $email,
-                            keyboardType: .emailAddress
+                            keyboardType: .emailAddress,
+                            accessibilityIdentifier: "AuthEmailField"
                         )
                         
                         AuthTextField(
                             icon: "lock",
                             placeholder: "Password",
                             text: $password,
-                            isSecure: true
+                            isSecure: true,
+                            accessibilityIdentifier: "AuthPasswordField"
                         )
                         
                         if isSignUp {
@@ -105,7 +110,8 @@ struct AuthView: View {
                                 icon: "lock",
                                 placeholder: "Confirm Password",
                                 text: $confirmPassword,
-                                isSecure: true
+                                isSecure: true,
+                                accessibilityIdentifier: "AuthConfirmPasswordField"
                             )
                         }
                     }
@@ -273,6 +279,7 @@ struct AuthTextField: View {
     var keyboardType: UIKeyboardType = .default
     #endif
     var isSecure: Bool = false
+    var accessibilityIdentifier: String?
     
     @State private var isPasswordVisible = false
     
@@ -284,17 +291,21 @@ struct AuthTextField: View {
                 .frame(width: 24)
             
             if isSecure && !isPasswordVisible {
-                SecureField(placeholder, text: $text)
+                identifiedField(
+                    SecureField(placeholder, text: $text)
                     #if os(iOS)
                     .textContentType(placeholder.contains("Confirm") ? .newPassword : .password)
                     #endif
+                )
             } else {
-                TextField(placeholder, text: $text)
+                identifiedField(
+                    TextField(placeholder, text: $text)
                     #if os(iOS)
                     .keyboardType(keyboardType)
                     .textContentType(keyboardType == .emailAddress ? .emailAddress : .none)
                     .autocapitalization(keyboardType == .emailAddress ? .none : .words)
                     #endif
+                )
             }
             
             if isSecure {
@@ -310,6 +321,15 @@ struct AuthTextField: View {
         .padding(Spacing.md)
         .background(Color.elevatedBackground)
         .clipShape(RoundedRectangle(cornerRadius: CornerRadius.medium))
+    }
+
+    @ViewBuilder
+    private func identifiedField<Content: View>(_ content: Content) -> some View {
+        if let accessibilityIdentifier {
+            content.accessibilityIdentifier(accessibilityIdentifier)
+        } else {
+            content
+        }
     }
 }
 
