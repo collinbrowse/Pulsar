@@ -12,7 +12,14 @@ struct AuthView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     
-    @State private var isSignUp = true
+    /// When true, show Create Account; when false, show Sign In. Used when opening from "I already have an account".
+    private let initialIsSignUp: Bool
+    @State private var isSignUp: Bool
+    
+    init(initialIsSignUp: Bool = true) {
+        self.initialIsSignUp = initialIsSignUp
+        _isSignUp = State(initialValue: initialIsSignUp)
+    }
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""

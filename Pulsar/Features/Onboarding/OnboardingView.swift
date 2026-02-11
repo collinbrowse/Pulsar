@@ -7,10 +7,17 @@
 
 import SwiftUI
 
+/// Which auth screen to show when opening from onboarding. Drives sheet so the correct screen shows on first tap.
+private enum AuthSheetMode: Identifiable {
+    case signUp
+    case signIn
+    var id: Self { self }
+}
+
 struct OnboardingView: View {
     @Environment(AppState.self) private var appState
     @State private var currentPage = 0
-    @State private var showAuth = false
+    @State private var authSheet: AuthSheetMode?
     
     private let pages: [OnboardingPage] = [
         OnboardingPage(
@@ -33,12 +40,17 @@ struct OnboardingView: View {
         )
     ]
     
+    private var safePageIndex: Int {
+        guard !pages.isEmpty else { return 0 }
+        return min(max(0, currentPage), pages.count - 1)
+    }
+
     var body: some View {
         ZStack {
             // Background gradient
             LinearGradient(
                 colors: [
-                    pages[currentPage].color.opacity(0.15),
+                    pages.isEmpty ? Color.pulsarPrimary.opacity(0.15) : pages[safePageIndex].color.opacity(0.15),
                     Color(.systemBackground)
                 ],
                 startPoint: .topLeading,
@@ -90,11 +102,11 @@ struct OnboardingView: View {
                 VStack(spacing: Spacing.sm) {
                     if currentPage == pages.count - 1 {
                         PrimaryButton("Get Started", icon: "arrow.right") {
-                            showAuth = true
+                            authSheet = .signUp
                         }
                         
                         Button("I already have an account") {
-                            showAuth = true
+                            authSheet = .signIn
                         }
                         .font(.bodyMedium)
                         .foregroundStyle(Color.textSecondary)
@@ -111,8 +123,8 @@ struct OnboardingView: View {
                 .padding(.bottom, Spacing.xxl)
             }
         }
-        .fullScreenCover(isPresented: $showAuth) {
-            AuthView()
+        .fullScreenCover(item: $authSheet) { mode in
+            AuthView(initialIsSignUp: mode == .signUp)
         }
     }
 }
