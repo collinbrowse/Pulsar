@@ -10,6 +10,7 @@ import Foundation
 import Testing
 
 @Suite("Segments Flow Tests")
+@MainActor
 struct SegmentsFlowTests {
     @Test("Explore tab returns all segments when no search text")
     func testExploreAllSegments() async throws {

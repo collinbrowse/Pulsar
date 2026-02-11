@@ -10,11 +10,13 @@ import Foundation
 @testable import Pulsar
 
 @Suite("Activity Data Tests")
+@MainActor
 struct ActivityDataTests {
     
     // MARK: - Formatting Tests
     
     @Suite("Formatting")
+    @MainActor
     struct FormattingTests {
         
         @Test("Formatted distance - less than 1km")
@@ -135,6 +137,7 @@ struct ActivityDataTests {
     // MARK: - Properties Tests
     
     @Suite("Properties")
+    @MainActor
     struct PropertiesTests {
         
         @Test("Has route - with coordinates")
@@ -221,6 +224,7 @@ struct ActivityDataTests {
 // MARK: - Time Range Tests
 
 @Suite("Time Range Tests")
+@MainActor
 struct TimeRangeTests {
     
     @Test("Time range display names")
@@ -249,9 +253,11 @@ struct TimeRangeTests {
 // MARK: - Units Tests
 
 @Suite("Units Tests")
+@MainActor
 struct UnitsTests {
     
     @Suite("Distance Unit")
+    @MainActor
     struct DistanceUnitTests {
         
         @Test("Distance unit display names")
@@ -268,6 +274,7 @@ struct UnitsTests {
     }
     
     @Suite("Pace Unit")
+    @MainActor
     struct PaceUnitTests {
         
         @Test("Pace unit display names")
@@ -287,6 +294,7 @@ struct UnitsTests {
 // MARK: - Leaderboard Filter Tests
 
 @Suite("Leaderboard Filter Tests")
+@MainActor
 struct LeaderboardFilterTests {
     
     @Test("Filter titles")
@@ -308,6 +316,7 @@ struct LeaderboardFilterTests {
 // MARK: - Tab Tests
 
 @Suite("Tab Tests")
+@MainActor
 struct TabTests {
     
     @Test("Tab titles")

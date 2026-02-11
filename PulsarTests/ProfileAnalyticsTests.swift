@@ -10,6 +10,7 @@ import Foundation
 import Testing
 
 @Suite("Profile Analytics Tests")
+@MainActor
 struct ProfileAnalyticsTests {
     @Test("Filter activities by type when provided")
     func testFilterByType() async throws {

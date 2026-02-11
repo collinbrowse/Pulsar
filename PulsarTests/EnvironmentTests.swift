@@ -10,6 +10,7 @@ import Foundation
 @testable import Pulsar
 
 @Suite("Environment Configuration Tests")
+@MainActor
 struct EnvironmentTests {
     
     @Test("Environment should be accessible")
@@ -17,8 +18,9 @@ struct EnvironmentTests {
         let env = AppEnvironment.shared
         
         // Environment should be accessible (values may be empty in test)
-        #expect(env.supabaseURL != nil)
-        #expect(env.supabaseAnonKey != nil)
+        // supabaseURL and supabaseAnonKey are non-optional Strings with defaults
+        #expect(!env.supabaseURL.isEmpty)
+        #expect(!env.supabaseAnonKey.isEmpty)
     }
     
     @Test("Environment configuration status should be deterministic")

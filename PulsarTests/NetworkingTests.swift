@@ -10,11 +10,13 @@ import Foundation
 @testable import Pulsar
 
 @Suite("Networking Tests")
+@MainActor
 struct NetworkingTests {
     
     // MARK: - Network Error Tests
     
     @Suite("Network Error")
+    @MainActor
     struct NetworkErrorTests {
         
         @Test("Error descriptions")
@@ -42,6 +44,7 @@ struct NetworkingTests {
     // MARK: - User Model Tests
     
     @Suite("User Model")
+    @MainActor
     struct UserModelTests {
         
         @Test("User initialization")
@@ -70,6 +73,7 @@ struct NetworkingTests {
     // MARK: - Session Model Tests
     
     @Suite("Session Model")
+    @MainActor
     struct SessionModelTests {
         
         @Test("Session initialization")
@@ -118,6 +122,7 @@ struct NetworkingTests {
     // MARK: - User Profile Tests
     
     @Suite("User Profile")
+    @MainActor
     struct UserProfileTests {
         
         @Test("User profile initialization")

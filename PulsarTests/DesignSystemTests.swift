@@ -11,11 +11,13 @@ import Foundation
 @testable import Pulsar
 
 @Suite("Design System Tests")
+@MainActor
 struct DesignSystemTests {
     
     // MARK: - Activity Type Tests
     
     @Suite("Activity Type")
+    @MainActor
     struct ActivityTypeTests {
         
         @Test("Activity type display names")
@@ -69,6 +71,7 @@ struct DesignSystemTests {
     // MARK: - Visibility Tests
     
     @Suite("Visibility")
+    @MainActor
     struct VisibilityTests {
         
         @Test("Visibility display names")
@@ -96,6 +99,7 @@ struct DesignSystemTests {
     // MARK: - Gender Tests
     
     @Suite("Gender")
+    @MainActor
     struct GenderTests {
         
         @Test("Gender display names")
@@ -118,6 +122,7 @@ struct DesignSystemTests {
     // MARK: - Follow Status Tests
     
     @Suite("Follow Status")
+    @MainActor
     struct FollowStatusTests {
         
         @Test("Follow status raw values")
@@ -131,6 +136,7 @@ struct DesignSystemTests {
     // MARK: - Spacing Tests
     
     @Suite("Spacing")
+    @MainActor
     struct SpacingTests {
         
         @Test("Spacing values")
@@ -149,6 +155,7 @@ struct DesignSystemTests {
     // MARK: - Corner Radius Tests
     
     @Suite("Corner Radius")
+    @MainActor
     struct CornerRadiusTests {
         
         @Test("Corner radius values")
@@ -164,6 +171,7 @@ struct DesignSystemTests {
     // MARK: - Coordinate Tests
     
     @Suite("Coordinate")
+    @MainActor
     struct CoordinateTests {
         
         @Test("Coordinate initialization")

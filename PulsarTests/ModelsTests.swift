@@ -11,11 +11,13 @@ import SwiftData
 @testable import Pulsar
 
 @Suite("Models Tests")
+@MainActor
 struct ModelsTests {
     
     // MARK: - Profile Tests
     
     @Suite("Profile Model")
+    @MainActor
     struct ProfileTests {
         
         @Test("Profile initialization with required fields")
@@ -84,6 +86,7 @@ struct ModelsTests {
     // MARK: - Activity Tests
     
     @Suite("Activity Model")
+    @MainActor
     struct ActivityTests {
         
         @Test("Activity initialization")
@@ -209,6 +212,7 @@ struct ModelsTests {
     // MARK: - Segment Tests
     
     @Suite("Segment Model")
+    @MainActor
     struct SegmentTests {
         
         @Test("Segment initialization")
@@ -250,6 +254,7 @@ struct ModelsTests {
     // MARK: - Segment Effort Tests
     
     @Suite("Segment Effort Model")
+    @MainActor
     struct SegmentEffortTests {
         
         @Test("Segment effort initialization")
@@ -288,6 +293,7 @@ struct ModelsTests {
     // MARK: - Follow Tests
     
     @Suite("Follow Model")
+    @MainActor
     struct FollowTests {
         
         @Test("Follow initialization")
@@ -308,6 +314,7 @@ struct ModelsTests {
     // MARK: - Kudos Tests
     
     @Suite("Kudos Model")
+    @MainActor
     struct KudosTests {
         
         @Test("Kudos initialization")
@@ -323,6 +330,7 @@ struct ModelsTests {
     // MARK: - Comment Tests
     
     @Suite("Comment Model")
+    @MainActor
     struct CommentTests {
         
         @Test("Comment initialization")

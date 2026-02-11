@@ -10,6 +10,7 @@ import Foundation
 import Testing
 
 @Suite("Feed Flow Tests")
+@MainActor
 struct FeedFlowTests {
     @Test("Toggle kudos adds kudos when previously not liked")
     func testToggleKudosAdds() async throws {
