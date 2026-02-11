@@ -88,23 +88,30 @@ struct FeedView: View {
     
     private func loadFeed() async {
         isLoading = true
+        defer { isLoading = false }
         
-        // Simulate loading with sample data
-        try? await Task.sleep(for: .milliseconds(500))
+        guard let userId = appState.currentUserID, let token = appState.accessToken else {
+            activities = []
+            return
+        }
         
-        activities = SampleData.activities
-        isLoading = false
+        do {
+            let rows: [FeedItemRow] = try await SupabaseClient.shared.rpc(
+                name: "get_user_feed",
+                params: ["p_user_id": userId, "p_limit": 50, "p_offset": 0],
+                accessToken: token,
+                schema: "app"
+            )
+            activities = rows.map { $0.toActivityData() }
+        } catch {
+            activities = []
+        }
     }
     
     private func refreshFeed() async {
         isRefreshing = true
         HapticFeedback.impact(.light)
-        
-        try? await Task.sleep(for: .milliseconds(800))
-        
-        // In production, fetch from Supabase
-        activities = SampleData.activities.shuffled()
-        
+        await loadFeed()
         isRefreshing = false
     }
     

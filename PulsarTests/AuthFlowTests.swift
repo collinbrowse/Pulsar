@@ -57,8 +57,18 @@ struct AuthFlowTests {
             from table: String,
             select: String,
             filter: [String: String],
-            accessToken: String?
+            accessToken: String?,
+            schema: String?
         ) async throws -> [T] where T: Decodable {
+            []
+        }
+        
+        func rpc<T: Decodable>(
+            name: String,
+            params: [String: Any],
+            accessToken: String?,
+            schema: String?
+        ) async throws -> [T] {
             []
         }
         
@@ -81,8 +91,6 @@ struct AuthFlowTests {
         
         #expect(appState.isAuthenticated == false)
         #expect(appState.currentUserID == nil)
-        
-        let profile = AuthProfileInput(fullName: "Test User")
         
         let request = AuthRequest(
             mode: .signUp,
@@ -107,7 +115,7 @@ struct AuthFlowTests {
     func testSignUpFailure() async throws {
         let appState = AppState()
         let mockClient = MockSupabaseClient()
-        mockClient.signUpError = NetworkError.httpError(statusCode: 400)
+        mockClient.signUpError = NetworkError.httpError(statusCode: 400, serverMessage: nil)
         
         try await #expect(throws: Error.self) {
             let request = AuthRequest(

@@ -9,6 +9,8 @@ import SwiftUI
 import MapKit
 
 struct SegmentsView: View {
+    @Environment(AppState.self) private var appState
+    
     @State private var searchText = ""
     @State private var selectedTab: SegmentTab = .explore
     @State private var segments: [SegmentData] = []
@@ -93,9 +95,26 @@ struct SegmentsView: View {
     
     private func loadSegments() async {
         isLoading = true
-        try? await Task.sleep(for: .milliseconds(300))
-        segments = SampleSegmentData.segments
-        isLoading = false
+        defer { isLoading = false }
+        
+        guard let token = appState.accessToken else {
+            segments = []
+            return
+        }
+        
+        do {
+            let rows: [SegmentRowDTO] = try await SupabaseClient.shared.fetch(
+                from: "segments",
+                select: "segment_id,name,activity_type,distance_m,elevation_gain_m,city,state,country,effort_count,star_count,created_by",
+                filter: [:],
+                accessToken: token,
+                schema: "app"
+            )
+            let currentUserID = appState.currentUserID
+            segments = rows.map { $0.toSegmentData(currentUserID: currentUserID) }
+        } catch {
+            segments = []
+        }
     }
 }
 
@@ -530,4 +549,5 @@ enum SampleSegmentData {
 
 #Preview {
     SegmentsView()
+        .environment(AppState())
 }

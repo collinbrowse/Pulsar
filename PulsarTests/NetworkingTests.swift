@@ -21,14 +21,20 @@ struct NetworkingTests {
         func testErrorDescriptions() async throws {
             #expect(NetworkError.invalidResponse.errorDescription == "Invalid server response")
             #expect(NetworkError.invalidData.errorDescription == "Invalid data received")
-            #expect(NetworkError.httpError(statusCode: 404).errorDescription == "HTTP error: 404")
-            #expect(NetworkError.httpError(statusCode: 500).errorDescription == "HTTP error: 500")
+            #expect(NetworkError.httpError(statusCode: 404, serverMessage: nil).errorDescription == "HTTP error: 404")
+            #expect(NetworkError.httpError(statusCode: 500, serverMessage: nil).errorDescription == "HTTP error: 500")
             #expect(NetworkError.unauthorized.errorDescription == "Authentication required")
+        }
+        
+        @Test("HTTP error uses server message when present")
+        func testHttpErrorServerMessage() async throws {
+            let msg = "This email is already registered."
+            #expect(NetworkError.httpError(statusCode: 422, serverMessage: msg).errorDescription == msg)
         }
         
         @Test("Error localized description")
         func testLocalizedDescription() async throws {
-            let error: NetworkError = .httpError(statusCode: 403)
+            let error: NetworkError = .httpError(statusCode: 403, serverMessage: nil)
             #expect(error.localizedDescription.contains("403"))
         }
     }

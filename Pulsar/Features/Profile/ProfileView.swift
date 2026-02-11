@@ -13,6 +13,8 @@ struct ProfileView: View {
     @State private var selectedTimeRange: TimeRange = .allTime
     @State private var selectedActivityType: ActivityType? = nil
     @State private var activities: [ActivityData] = []
+    @State private var followerCount: Int = 0
+    @State private var followingCount: Int = 0
     @State private var isLoading = true
     
     var body: some View {
@@ -23,9 +25,9 @@ struct ProfileView: View {
                     ProfileHeader(
                         name: appState.userProfile?.fullName ?? "Athlete",
                         username: appState.userProfile?.username ?? "@athlete",
-                        avatarURL: nil,
-                        followersCount: 128,
-                        followingCount: 94,
+                        avatarURL: appState.userProfile.flatMap { $0.avatarURL.flatMap { URL(string: $0) } },
+                        followersCount: followerCount,
+                        followingCount: followingCount,
                         activitiesCount: activities.count
                     )
                     .padding(.horizontal, Spacing.md)
@@ -153,9 +155,43 @@ struct ProfileView: View {
     
     private func loadActivities() async {
         isLoading = true
-        try? await Task.sleep(for: .milliseconds(300))
-        activities = SampleData.activities
-        isLoading = false
+        defer { isLoading = false }
+        
+        guard let userId = appState.currentUserID, let token = appState.accessToken else {
+            activities = []
+            return
+        }
+        
+        let userName = appState.userProfile?.displayName ?? appState.userProfile?.username ?? "Me"
+        
+        do {
+            let rows: [ActivityRow] = try await SupabaseClient.shared.fetch(
+                from: "activities",
+                select: "activity_id,user_id,activity_type,name,distance_m,duration_sec,elevation_gain_m,start_time",
+                filter: ["user_id": userId],
+                accessToken: token,
+                schema: "app"
+            )
+            activities = rows.map { $0.toActivityData(userName: userName) }
+        } catch {
+            activities = []
+        }
+        
+        do {
+            let stats: [SocialStatsRow] = try await SupabaseClient.shared.rpc(
+                name: "get_user_social_stats",
+                params: ["p_user_id": userId],
+                accessToken: token,
+                schema: "app"
+            )
+            if let first = stats.first {
+                followerCount = first.followerCount ?? 0
+                followingCount = first.followingCount ?? 0
+            }
+        } catch {
+            followerCount = 0
+            followingCount = 0
+        }
     }
 }
 
