@@ -16,6 +16,7 @@ import OSLog
 protocol SupabaseClientProtocol {
     func signUp(email: String, password: String, metadata: [String: String]) async throws -> User
     func signIn(email: String, password: String) async throws -> Session
+    func refreshSession(refreshToken: String) async throws -> Session
     func fetch<T: Decodable>(
         from table: String,
         select: String,
@@ -135,8 +136,48 @@ final class SupabaseClient: SupabaseClientProtocol {
               let userId = (json?["user"] as? [String: Any])?["id"] as? String else {
             throw NetworkError.invalidData
         }
+        let refreshToken = json?["refresh_token"] as? String
         
-        return Session(accessToken: accessToken, userId: userId)
+        return Session(accessToken: accessToken, userId: userId, refreshToken: refreshToken)
+    }
+    
+    /// Restore session using a saved refresh token (e.g. on app launch).
+    func refreshSession(refreshToken: String) async throws -> Session {
+        var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true)!
+        components.queryItems = [URLQueryItem(name: "grant_type", value: "refresh_token")]
+        guard let endpoint = components.url else {
+            throw NetworkError.invalidResponse
+        }
+        
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        
+        let body: [String: Any] = ["refresh_token": refreshToken]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        Self.logRequest(path: "/auth/v1/token", method: "POST", bodySummary: "refresh_token")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        Self.logResponse(path: "/auth/v1/token", response: response, data: data)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            let serverMessage = Self.parseAuthErrorBody(data)
+                ?? Self.signInFriendlyMessage(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0)
+            throw NetworkError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0, serverMessage: serverMessage)
+        }
+        
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let accessToken = json?["access_token"] as? String,
+              let userId = (json?["user"] as? [String: Any])?["id"] as? String else {
+            throw NetworkError.invalidData
+        }
+        let newRefreshToken = json?["refresh_token"] as? String ?? refreshToken
+        
+        return Session(accessToken: accessToken, userId: userId, refreshToken: newRefreshToken)
     }
     
     // MARK: - REST API

@@ -39,23 +39,4 @@ struct Session: Codable, Sendable {
         self.userId = userId
         self.refreshToken = refreshToken
     }
-    
-    enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case userId
-        case refreshToken = "refresh_token"
-    }
-    
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        accessToken = try c.decode(String.self, forKey: .accessToken)
-        userId = (try c.decodeIfPresent([String: AnyCodable].self, forKey: .userId)?.compactMapValues { $0.value as? String }.values.first)
-            ?? (try? c.decode(String.self, forKey: .userId))
-            ?? (try (c.decode([String: Any].self, forKey: CodingKeys(stringValue: "user")!))["id"] as? String)
-            ?? ""
-        if userId.isEmpty, let user = try? c.decode(GoTrueUser.self, forKey: CodingKeys(stringValue: "user")!) {
-            // GoTrue wraps user in "user" object
-        }
-        refreshToken = try c.decodeIfPresent(String.self, forKey: .refreshToken)
-    }
 }

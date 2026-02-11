@@ -53,6 +53,10 @@ struct AuthFlowTests {
             return Session(accessToken: "mock-token", userId: "mock-user-id")
         }
         
+        func refreshSession(refreshToken: String) async throws -> Session {
+            Session(accessToken: "mock-token", userId: "mock-user-id", refreshToken: refreshToken)
+        }
+        
         func fetch<T>(
             from table: String,
             select: String,

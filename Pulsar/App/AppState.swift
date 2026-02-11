@@ -30,6 +30,9 @@ final class AppState {
     
     // MARK: - App State
     
+    /// True only after we've tried restoring session on launch. Keeps user on loading screen until we know auth state.
+    var hasDeterminedAuthState: Bool = false
+    
     /// Whether the app is currently loading data
     var isLoading: Bool = false
     
@@ -51,10 +54,11 @@ final class AppState {
     init() {
         // Load any persisted authentication state
         loadPersistedState()
-        // UI testing: allow launching in authenticated state
+        // UI testing: allow launching in authenticated state (skip loading screen)
         if ProcessInfo.processInfo.arguments.contains("--authenticated") {
             isAuthenticated = true
             currentUserID = "ui-test-user"
+            hasDeterminedAuthState = true
         }
     }
     
@@ -69,13 +73,13 @@ final class AppState {
         clearPersistedState()
     }
     
-    /// Set authentication state after successful login
-    func setAuthenticated(userId: String, accessToken: String, profile: UserProfile? = nil) {
+    /// Set authentication state after successful login (and persist so user stays logged in).
+    func setAuthenticated(userId: String, accessToken: String, refreshToken: String? = nil, profile: UserProfile? = nil) {
         self.currentUserID = userId
         self.accessToken = accessToken
         self.userProfile = profile
         self.isAuthenticated = true
-        persistState()
+        persistState(userId: userId, accessToken: accessToken, refreshToken: refreshToken)
     }
     
     /// Show a global error message
@@ -86,16 +90,47 @@ final class AppState {
     
     // MARK: - Persistence
     
-    private func loadPersistedState() {
-        // In production, load from Keychain
-        // For now, user will need to re-authenticate each launch
+    /// Call once on launch to restore session from Keychain (e.g. refresh token).
+    /// If a stored refresh token is valid, the user is signed in without showing login.
+    func restoreSessionIfNeeded() async {
+        defer { hasDeterminedAuthState = true }
+        guard let stored = KeychainStorage.loadSession() else { return }
+        // Prefer refreshing so we get a fresh access token; if no refresh token, apply stored access token (may be expired).
+        if let refreshToken = stored.refreshToken {
+            do {
+                let session = try await SupabaseClient.shared.refreshSession(refreshToken: refreshToken)
+                setAuthenticated(
+                    userId: session.userId,
+                    accessToken: session.accessToken,
+                    refreshToken: session.refreshToken,
+                    profile: nil
+                )
+            } catch {
+                clearPersistedState()
+            }
+            return
+        }
+        // Legacy: only access token stored (e.g. from before we added refresh).
+        setAuthenticated(
+            userId: stored.userId,
+            accessToken: stored.accessToken,
+            refreshToken: nil,
+            profile: nil
+        )
     }
     
-    private func persistState() {
-        // In production, save to Keychain
+    private func loadPersistedState() {
+        // Session is restored asynchronously in restoreSessionIfNeeded() so we can refresh the token.
+    }
+    
+    private func persistState(userId: String? = nil, accessToken: String? = nil, refreshToken: String? = nil) {
+        let uid = userId ?? currentUserID
+        let token = accessToken ?? self.accessToken
+        guard let uid = uid, let token = token else { return }
+        KeychainStorage.saveSession(userId: uid, accessToken: token, refreshToken: refreshToken)
     }
     
     private func clearPersistedState() {
-        // In production, clear Keychain
+        KeychainStorage.clearSession()
     }
 }

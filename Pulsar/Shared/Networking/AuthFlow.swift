@@ -45,8 +45,12 @@ enum AuthFlow {
                 email: request.email,
                 password: request.password
             )
-            appState.currentUserID = session.userId
-            appState.isAuthenticated = true
+            appState.setAuthenticated(
+                userId: session.userId,
+                accessToken: session.accessToken,
+                refreshToken: session.refreshToken,
+                profile: nil
+            )
         }
     }
 }

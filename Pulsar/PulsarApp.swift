@@ -103,6 +103,9 @@ struct PulsarApp: App {
         WindowGroup {
             RootView()
                 .environment(appState)
+                .task {
+                    await appState.restoreSessionIfNeeded()
+                }
         }
         .modelContainer(sharedModelContainer)
     }
