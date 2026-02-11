@@ -187,6 +187,7 @@ extension View {
 
 // MARK: - Gradients
 
+@MainActor
 extension LinearGradient {
     static let pulsarGradient = LinearGradient(
         colors: [Color.gradientStart, Color.gradientEnd],
