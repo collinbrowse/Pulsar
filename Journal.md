@@ -21,6 +21,7 @@ Imagine a restaurant kitchen: the views are the servers, taking orders and prese
 # The Journey
 - Started with a clean feature-based folder layout to keep growth tidy.
 - Learned early that keeping flows in `Shared/Logic` prevents view bloat and makes tests easier.
+- Hardened UI tests by adding stable accessibility identifiers to auth fields and making feed refresh tests tolerate empty states.
 
 # Engineer's Wisdom
 - Keep view code small and push logic into flows so the UI stays focused.
