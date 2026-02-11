@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 // MARK: - Primary Button
 
@@ -422,55 +423,55 @@ struct RoutePreview: View {
     let coordinates: [Coordinate]
     
     var body: some View {
-        GeometryReader { geometry in
-            if !coordinates.isEmpty {
-                Path { path in
-                    let points = normalizedPoints(in: geometry.size)
-                    guard let first = points.first else { return }
-                    path.move(to: first)
-                    for point in points.dropFirst() {
-                        path.addLine(to: point)
-                    }
-                }
-                .stroke(
-                    LinearGradient.pulsarGradient,
-                    style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-                )
-                .background(Color.elevatedBackground)
-            } else {
-                Color.elevatedBackground
-                    .overlay {
-                        Image(systemName: "map")
-                            .font(.title)
-                            .foregroundStyle(Color.textTertiary)
-                    }
+        if !coordinates.isEmpty {
+            Map(initialPosition: mapCameraPosition, interactionModes: []) {
+                MapPolyline(coordinates: coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
+                    .stroke(.pulsarPrimary, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
             }
+            .mapStyle(.standard(elevation: .flat))
+        } else {
+            Color.elevatedBackground
+                .overlay {
+                    Image(systemName: "map")
+                        .font(.title)
+                        .foregroundStyle(Color.textTertiary)
+                }
         }
     }
     
-    private func normalizedPoints(in size: CGSize) -> [CGPoint] {
-        guard !coordinates.isEmpty else { return [] }
+    /// Computes a camera position that fits all coordinates with padding, viewed from directly above
+    private var mapCameraPosition: MapCameraPosition {
+        let clCoordinates = coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
         
-        let lats = coordinates.map { $0.latitude }
-        let lons = coordinates.map { $0.longitude }
+        guard !clCoordinates.isEmpty else {
+            return .automatic
+        }
+        
+        let lats = clCoordinates.map { $0.latitude }
+        let lons = clCoordinates.map { $0.longitude }
         
         let minLat = lats.min() ?? 0
         let maxLat = lats.max() ?? 0
         let minLon = lons.min() ?? 0
         let maxLon = lons.max() ?? 0
         
-        let latRange = max(maxLat - minLat, 0.0001)
-        let lonRange = max(maxLon - minLon, 0.0001)
+        let centerLat = (minLat + maxLat) / 2
+        let centerLon = (minLon + maxLon) / 2
         
-        let padding: CGFloat = 16
-        let drawWidth = size.width - padding * 2
-        let drawHeight = size.height - padding * 2
+        let latDelta = (maxLat - minLat) * 1.3 // Add 30% padding
+        let lonDelta = (maxLon - minLon) * 1.3
         
-        return coordinates.map { coord in
-            let x = padding + CGFloat((coord.longitude - minLon) / lonRange) * drawWidth
-            let y = padding + CGFloat(1 - (coord.latitude - minLat) / latRange) * drawHeight
-            return CGPoint(x: x, y: y)
-        }
+        let span = MKCoordinateSpan(
+            latitudeDelta: max(latDelta, 0.005),
+            longitudeDelta: max(lonDelta, 0.005)
+        )
+        
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
+            span: span
+        )
+        
+        return .region(region)
     }
 }
 
@@ -681,6 +682,15 @@ struct SearchBar: View {
 struct Coordinate: Codable, Sendable, Hashable {
     let latitude: Double
     let longitude: Double
+    var elevation: Double?
+    var time: Date?
+    
+    init(latitude: Double, longitude: Double, elevation: Double? = nil, time: Date? = nil) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.elevation = elevation
+        self.time = time
+    }
 }
 
 struct ActivityData: Identifiable, Sendable {
