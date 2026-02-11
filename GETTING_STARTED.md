@@ -44,6 +44,16 @@ Crashlytics disabled via feature flag
 
 This is expected - we haven't configured API keys yet.
 
+**Simulator-only console messages** you can ignore when running in the simulator:
+- `CHHapticPattern` / `hapticpatternlibrary.plist` – haptic feedback isn’t available in the simulator.
+- `UIKeyboardLayoutStar` / `Unable to simultaneously satisfy constraints` involving `_UIRemoteKeyboardPlaceholderView` – system keyboard layout in simulator.
+- `nano zone abandoned` / `malloc` – common simulator memory allocator message.
+- `Failed to send CA Event for app launch measurements` – Core Animation metrics in simulator.
+- `CoreData: error:` (long dumps) – when SwiftData migration fails, the framework logs these before the app recovers. Use `[Pulsar]` lines to follow app behavior.
+
+**Quieter console (optional)**  
+To hide system and Core Data verbose logs and only see `[Pulsar]` and your code: **Edit Scheme → Run → Arguments → Environment Variables** → add `OS_ACTIVITY_MODE` = `disable`. This turns off all `os_log` output (including frameworks), so use it when you need a clean console to trace app flow.
+
 ---
 
 ## Project Status
