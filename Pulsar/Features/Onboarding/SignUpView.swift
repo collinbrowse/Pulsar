@@ -250,7 +250,7 @@ struct SignUpView: View {
                     // User has complete profile - go to main app
                     print("✅ Existing user signed in successfully - navigating to main app")
                     appState.isAuthenticated = true
-                    appState.currentUserId = session.userId
+                    appState.currentUserID = session.userId
                     path = NavigationPath() // Clear navigation stack
                     
                     // Sync activities from backend after sign-in

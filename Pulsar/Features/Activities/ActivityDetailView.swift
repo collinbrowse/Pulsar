@@ -150,7 +150,7 @@ struct ActivityDetailView: View {
     }
     
     private func updateMetricPreference() {
-        guard let userId = appState.currentUserId else {
+        guard let userId = appState.currentUserID else {
             useMetric = false
             return
         }

@@ -44,6 +44,16 @@ Crashlytics disabled via feature flag
 
 This is expected - we haven't configured API keys yet.
 
+**Simulator-only console messages** you can ignore when running in the simulator:
+- `CHHapticPattern` / `hapticpatternlibrary.plist` – haptic feedback isn’t available in the simulator.
+- `UIKeyboardLayoutStar` / `Unable to simultaneously satisfy constraints` involving `_UIRemoteKeyboardPlaceholderView` – system keyboard layout in simulator.
+- `nano zone abandoned` / `malloc` – common simulator memory allocator message.
+- `Failed to send CA Event for app launch measurements` – Core Animation metrics in simulator.
+- `CoreData: error:` (long dumps) – when SwiftData migration fails, the framework logs these before the app recovers. Use `[Pulsar]` lines to follow app behavior.
+
+**Quieter console (optional)**  
+To hide system and Core Data verbose logs and only see `[Pulsar]` and your code: **Edit Scheme → Run → Arguments → Environment Variables** → add `OS_ACTIVITY_MODE` = `disable`. This turns off all `os_log` output (including frameworks), so use it when you need a clean console to trace app flow.
+
 ---
 
 ## Project Status
@@ -118,6 +128,17 @@ This is expected - we haven't configured API keys yet.
 # Or command line:
 xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
+
+### Swift 6 Compliance
+
+The codebase is written for **Swift 6** with strict concurrency:
+
+- **Language mode**: In Xcode, set **Build Settings → Swift Language Version** to **Swift 6** (or leave default when using Xcode 16+).
+- **Strict concurrency**: With Swift 6, full concurrency checking is on by default. The project uses:
+  - `@MainActor` for UI and app state (`AppState`, `SupabaseClient`, `ObservabilityManager`, `FeatureFlags`)
+  - `Sendable` for types that cross isolation boundaries (models, errors, enums)
+  - No `[String: Any]` in public APIs; use `[String: String]` or `Data`/`Encodable` for Sendable safety
+- If you use an older Xcode with Swift 5, enable **Build Settings → Other Swift Flags**: `-strict-concurrency=complete` (warnings) to prepare for Swift 6.
 
 ### Run Linter
 

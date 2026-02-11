@@ -2,385 +2,237 @@
 //  FeedView.swift
 //  Pulsar
 //
-//  Created on 10/27/25.
+//  Social activity feed showing followed users' activities
 //
 
-import SwiftData
 import SwiftUI
+import SwiftData
 
 struct FeedView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     
-    @State private var feedItems: [FeedItem] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    
-    private let socialService = SocialService.shared
+    @State private var activities: [ActivityData] = []
+    @State private var isLoading = true
+    @State private var isRefreshing = false
+    @State private var selectedActivity: ActivityData?
+    @State private var showActivityDetail = false
     
     var body: some View {
         NavigationStack {
-            Group {
-                if feedItems.isEmpty && !isLoading {
-                    emptyState
+            ZStack {
+                if isLoading && activities.isEmpty {
+                    LoadingView("Loading feed...")
+                } else if activities.isEmpty {
+                    EmptyStateView(
+                        icon: "rectangle.stack",
+                        title: "No Activities Yet",
+                        message: "Follow athletes or import your first activity to get started.",
+                        actionTitle: "Import Activity"
+                    ) {
+                        // Trigger import
+                    }
                 } else {
-                    feedList
+                    ScrollView {
+                        LazyVStack(spacing: Spacing.md) {
+                            ForEach(activities) { activity in
+                                ActivityCard(
+                                    activity: activity,
+                                    onTap: {
+                                        selectedActivity = activity
+                                        showActivityDetail = true
+                                    },
+                                    onKudos: {
+                                        toggleKudos(for: activity)
+                                    },
+                                    onComment: {
+                                        selectedActivity = activity
+                                        showActivityDetail = true
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.top, Spacing.sm)
+                        .padding(.bottom, Spacing.xxxl)
+                    }
+                    .refreshable {
+                        await refreshFeed()
+                    }
                 }
             }
             .navigationTitle("Feed")
-            .refreshable {
-                await loadFeed()
-            }
-            .task {
-                await loadFeed()
-            }
-        }
-    }
-    
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No Activities Yet", systemImage: "figure.run.circle")
-        } description: {
-            Text("Follow other athletes to see their activities here")
-        } actions: {
-            Button("Find Athletes") {
-                // swiftlint:disable:next todo
-                // TODO: Navigate to user search (planned for future milestone)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-    }
-    
-    private var feedList: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(feedItems) { item in
-                    FeedCard(item: item)
-                        .padding(.horizontal)
-                }
-            }
-            .padding(.vertical)
-        }
-    }
-    
-    private func loadFeed() async {
-        guard let userId = appState.currentUserId else { return }
-        
-        isLoading = true
-        
-        do {
-            feedItems = try socialService.getFeed(userId: userId, modelContext: modelContext)
-            isLoading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            isLoading = false
-        }
-    }
-}
-
-// MARK: - Feed Card
-
-struct FeedCard: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(AppState.self) private var appState
-    
-    let item: FeedItem
-    
-    @State private var hasKudoed: Bool
-    @State private var kudosCount: Int
-    @State private var showComments = false
-    @State private var errorMessage: String?
-    @State private var showError = false
-    
-    private let socialService = SocialService.shared
-    
-    init(item: FeedItem) {
-        self.item = item
-        _hasKudoed = State(initialValue: item.hasUserKudoed)
-        _kudosCount = State(initialValue: item.kudosCount)
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack(spacing: 12) {
-                // Avatar
-                Circle()
-                    .fill(Color.blue.gradient)
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        Text(item.profile.username.prefix(1).uppercased())
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                    }
-                
-                // User info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.profile.username)
-                        .font(.headline)
-                    Text(item.timeAgo)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                
-                // Activity type icon
-                Image(systemName: item.activity.activityType.icon)
-                    .font(.title3)
-                    .foregroundStyle(.blue)
-            }
-            
-            // Activity name
-            Text(item.activity.name)
-                .font(.title3.bold())
-            
-            // Stats
-            HStack(spacing: 20) {
-                Label(formatDistance(item.activity.distance), systemImage: "location.fill")
-                Label(formatDuration(item.activity.duration), systemImage: "clock.fill")
-                if let elevation = item.activity.elevationGain {
-                    Label(formatElevation(elevation), systemImage: "arrow.up.right")
-                }
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            
-            Divider()
-            
-            // Actions
-            HStack(spacing: 24) {
-                Button(action: toggleKudo) {
-                    Label("\(kudosCount)", systemImage: hasKudoed ? "heart.fill" : "heart")
-                        .foregroundStyle(hasKudoed ? .red : .primary)
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: { showComments.toggle() }, label: {
-                    Label("\(item.commentsCount)", systemImage: "bubble.left")
-                })
-                .buttonStyle(.plain)
-                
-                Spacer()
-                
-                Button(action: {}, label: {
-                    Image(systemName: "paperplane")
-                })
-                .buttonStyle(.plain)
-            }
-            .font(.subheadline)
-            
-            // Comments preview
-            if showComments {
-                CommentSection(activityId: item.activity.id)
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 5)
-        .alert("Error", isPresented: $showError) {
-            Button("OK", role: .cancel) {
-                errorMessage = nil
-            }
-        } message: {
-            if let errorMessage {
-                Text(errorMessage)
-            }
-        }
-    }
-    
-    private func toggleKudo() {
-        guard let userId = appState.currentUserId else { return }
-        
-        // Store original state for potential revert
-        let originalHasKudoed = hasKudoed
-        let originalKudosCount = kudosCount
-        
-        Task {
-            do {
-                if hasKudoed {
-                    try await socialService.removeKudo(
-                        userId: userId,
-                        activityId: item.activity.id,
-                        modelContext: modelContext,
-                        appState: appState
-                    )
-                    await MainActor.run {
-                        hasKudoed = false
-                        kudosCount = max(0, kudosCount - 1)
-                    }
-                } else {
-                    try await socialService.giveKudo(
-                        userId: userId,
-                        activityId: item.activity.id,
-                        modelContext: modelContext,
-                        appState: appState
-                    )
-                    await MainActor.run {
-                        hasKudoed = true
-                        kudosCount += 1
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        // Notifications
+                    } label: {
+                        Image(systemName: "bell")
+                            .font(.bodyMedium)
                     }
                 }
-            } catch {
-                // Use ErrorManager for user-friendly error message
-                ErrorManager.shared.logError(error, context: "Toggle Kudo")
-                await MainActor.run {
-                    // Revert UI state on error
-                    hasKudoed = originalHasKudoed
-                    kudosCount = originalKudosCount
-                    errorMessage = error.userMessage
-                    showError = true
-                }
-            }
-        }
-    }
-    
-    private func formatDistance(_ meters: Double) -> String {
-        let km = meters / 1000
-        return String(format: "%.2f km", km)
-    }
-    
-    private func formatDuration(_ seconds: Double) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-    
-    private func formatElevation(_ meters: Double) -> String {
-        String(format: "%.0f m", meters)
-    }
-}
-
-// MARK: - Comment Section
-
-struct CommentSection: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(AppState.self) private var appState
-    
-    let activityId: String
-    
-    @State private var comments: [Comment] = []
-    @State private var newCommentText = ""
-    @State private var errorMessage: String?
-    @State private var showError = false
-    
-    private let socialService = SocialService.shared
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Divider()
-            
-            // Existing comments
-            ForEach(comments) { comment in
-                CommentRow(comment: comment)
-            }
-            
-            // New comment field
-            HStack(spacing: 12) {
-                TextField("Add a comment...", text: $newCommentText)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("Comment Field")
-                
-                Button("Post") {
-                    postComment()
-                }
-                .disabled(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("Post Comment")
             }
         }
         .task {
-            loadComments()
+            await loadFeed()
         }
-        .alert("Error", isPresented: $showError) {
-            Button("OK", role: .cancel) {
-                errorMessage = nil
-            }
-        } message: {
-            if let errorMessage {
-                Text(errorMessage)
+        .sheet(isPresented: $showActivityDetail) {
+            if let activity = selectedActivity {
+                ActivityDetailView(activity: activity)
             }
         }
     }
     
-    private func loadComments() {
-        do {
-            comments = try socialService.getComments(activityId: activityId, modelContext: modelContext)
-        } catch {
-            ErrorManager.shared.logError(error, context: "Load Comments")
-            errorMessage = error.userMessage
-            showError = true
-        }
-    }
+    // MARK: - Data Loading
     
-    private func postComment() {
-        guard let userId = appState.currentUserId else { return }
+    private func loadFeed() async {
+        isLoading = true
+        defer { isLoading = false }
         
-        let commentText = newCommentText
-        Task {
-            do {
-                try await socialService.addComment(
-                    userId: userId,
-                    activityId: activityId,
-                    text: commentText,
-                    modelContext: modelContext,
-                    appState: appState
-                )
-                
-                await MainActor.run {
-                    newCommentText = ""
-                    loadComments()
-                }
-            } catch {
-                // Use ErrorManager for user-friendly error message
-                ErrorManager.shared.logError(error, context: "Post Comment")
-                await MainActor.run {
-                    errorMessage = error.userMessage
-                    showError = true
-                    // Don't clear comment text on error - user can retry
-                }
-            }
+        guard let userId = appState.currentUserID, let token = appState.accessToken else {
+            activities = []
+            return
+        }
+        
+        do {
+            let rows: [FeedItemRow] = try await SupabaseClient.shared.rpc(
+                name: "get_user_feed",
+                params: ["p_user_id": userId, "p_limit": 50, "p_offset": 0],
+                accessToken: token,
+                schema: "app"
+            )
+            activities = rows.map { $0.toActivityData() }
+        } catch {
+            activities = []
+        }
+    }
+    
+    private func refreshFeed() async {
+        isRefreshing = true
+        HapticFeedback.impact(.light)
+        await loadFeed()
+        isRefreshing = false
+    }
+    
+    private func toggleKudos(for activity: ActivityData) {
+        HapticFeedback.impact(.light)
+        
+        withAnimation(.pulsarSpring) {
+            activities = FeedFlow.toggleKudos(
+                activities: activities,
+                for: activity.id
+            )
         }
     }
 }
 
-// MARK: - Comment Row
+// MARK: - Sample Data
 
-struct CommentRow: View {
-    let comment: Comment
+enum SampleData {
+    static let activities: [ActivityData] = [
+        ActivityData(
+            id: UUID(),
+            name: "Morning Run through Golden Gate Park",
+            type: .run,
+            userName: "Sarah Chen",
+            userAvatarURL: nil,
+            distanceMeters: 8543,
+            durationSeconds: 2820,
+            elevationGainMeters: 89,
+            paceSecondsPerKm: 330,
+            startDate: Date().addingTimeInterval(-3600),
+            routeCoordinates: generateSampleRoute(),
+            kudosCount: 24,
+            commentsCount: 3,
+            hasKudos: false
+        ),
+        ActivityData(
+            id: UUID(),
+            name: "Sunset Ride on the Coast",
+            type: .ride,
+            userName: "Marcus Johnson",
+            userAvatarURL: nil,
+            distanceMeters: 42500,
+            durationSeconds: 5400,
+            elevationGainMeters: 456,
+            paceSecondsPerKm: nil,
+            startDate: Date().addingTimeInterval(-7200),
+            routeCoordinates: generateSampleRoute(),
+            kudosCount: 67,
+            commentsCount: 8,
+            hasKudos: true
+        ),
+        ActivityData(
+            id: UUID(),
+            name: "Lunchtime Swim",
+            type: .swim,
+            userName: "Emma Wilson",
+            userAvatarURL: nil,
+            distanceMeters: 2000,
+            durationSeconds: 2400,
+            elevationGainMeters: nil,
+            paceSecondsPerKm: nil,
+            startDate: Date().addingTimeInterval(-14400),
+            routeCoordinates: [],
+            kudosCount: 15,
+            commentsCount: 2,
+            hasKudos: false
+        ),
+        ActivityData(
+            id: UUID(),
+            name: "Mt. Tamalpais Summit Hike",
+            type: .hike,
+            userName: "Alex Rivera",
+            userAvatarURL: nil,
+            distanceMeters: 14200,
+            durationSeconds: 14400,
+            elevationGainMeters: 823,
+            paceSecondsPerKm: 1014,
+            startDate: Date().addingTimeInterval(-86400),
+            routeCoordinates: generateSampleRoute(),
+            kudosCount: 89,
+            commentsCount: 12,
+            hasKudos: true
+        ),
+        ActivityData(
+            id: UUID(),
+            name: "Recovery Walk",
+            type: .walk,
+            userName: "Jordan Lee",
+            userAvatarURL: nil,
+            distanceMeters: 3200,
+            durationSeconds: 2100,
+            elevationGainMeters: 32,
+            paceSecondsPerKm: 656,
+            startDate: Date().addingTimeInterval(-172800),
+            routeCoordinates: generateSampleRoute(),
+            kudosCount: 8,
+            commentsCount: 1,
+            hasKudos: false
+        )
+    ]
     
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            // Avatar
-            Circle()
-                .fill(Color.gray.gradient)
-                .frame(width: 24, height: 24)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("@user\(comment.userId.prefix(8))")
-                        .font(.caption.bold())
-                    Text(comment.createdAt, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Text(comment.text)
-                    .font(.subheadline)
-            }
-            
-            Spacer()
+    static func generateSampleRoute() -> [Coordinate] {
+        // Generate a simple random route for demo
+        let baseLat = 37.7749 + Double.random(in: -0.05...0.05)
+        let baseLon = -122.4194 + Double.random(in: -0.05...0.05)
+        
+        var coords: [Coordinate] = []
+        var lat = baseLat
+        var lon = baseLon
+        
+        for _ in 0..<50 {
+            coords.append(Coordinate(latitude: lat, longitude: lon))
+            lat += Double.random(in: -0.002...0.002)
+            lon += Double.random(in: -0.002...0.002)
         }
+        
+        return coords
     }
 }
 
 #Preview {
     FeedView()
-        .modelContainer(for: Activity.self, inMemory: true)
         .environment(AppState())
 }

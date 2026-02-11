@@ -5,7 +5,7 @@ project_id = "jlyamkhkgjkktiypywkk"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "graphql_public", "app"]
+schemas = ["public", "app", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 

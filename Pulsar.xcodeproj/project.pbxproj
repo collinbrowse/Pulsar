@@ -11,6 +11,8 @@
 		BE83CA022ED4ADA4003C3662 /* XMLCoder in Frameworks */ = {isa = PBXBuildFile; productRef = BE83CA012ED4ADA4003C3662 /* XMLCoder */; };
 		BE83CA052ED4ADC3003C3662 /* FitDataProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = BE83CA042ED4ADC3003C3662 /* FitDataProtocol */; };
 		BEF8052D2EB124930018966D /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BEF8052C2EB124930018966D /* PostHog */; };
+		BEC429C72F3CE62200A2351E /* AGENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = BEC429C62F3CE62200A2351E /* AGENTS.md */; };
+		BEC429C92F3CE62A00A2351E /* Journal.md in Resources */ = {isa = PBXBuildFile; fileRef = BEC429C82F3CE62A00A2351E /* Journal.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +33,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		BEC429C62F3CE62200A2351E /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
+		BEC429C82F3CE62A00A2351E /* Journal.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Journal.md; sourceTree = "<group>"; };
 		BEF804432EAFF1D30018966D /* Pulsar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulsar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEF804522EAFF1D40018966D /* PulsarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulsarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEF8045C2EAFF1D40018966D /* PulsarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulsarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -90,6 +94,8 @@
 				BEF804552EAFF1D40018966D /* PulsarTests */,
 				BEF8045F2EAFF1D40018966D /* PulsarUITests */,
 				BEF804442EAFF1D30018966D /* Products */,
+				BEC429C62F3CE62200A2351E /* AGENTS.md */,
+				BEC429C82F3CE62A00A2351E /* Journal.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -233,6 +239,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BEC429C72F3CE62200A2351E /* AGENTS.md in Resources */,
+				BEC429C92F3CE62A00A2351E /* Journal.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -33,7 +33,7 @@ final class AuthenticationService {
         currentSession != nil
     }
     
-    var currentUserId: String? {
+    var currentUserID: String? {
         currentSession?.userId
     }
     
@@ -238,7 +238,7 @@ final class AuthenticationService {
         // Update app state on MainActor to trigger UI changes
         Task { @MainActor in
             appState.isAuthenticated = false
-            appState.currentUserId = nil
+            appState.currentUserID = nil
             
             // Store error message for display on login screen
             if let reason = reason {
@@ -290,11 +290,11 @@ final class AuthenticationService {
         
         if let session = currentSession {
             appState.isAuthenticated = true
-            appState.currentUserId = session.userId
+            appState.currentUserID = session.userId
             logger.info("Session restored, user authenticated: \(session.userId)")
         } else {
             appState.isAuthenticated = false
-            appState.currentUserId = nil
+            appState.currentUserID = nil
             logger.info("No session found, user not authenticated")
         }
     }

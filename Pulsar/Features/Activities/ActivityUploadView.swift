@@ -202,7 +202,7 @@ struct ActivityUploadView: View {
             return
         }
         
-        guard let userId = appState.currentUserId else {
+        guard let userId = appState.currentUserID else {
             // This shouldn't happen if validateAuthentication passed, but handle it
             errorMessage = "You must be signed in to upload activities"
             AuthenticationService.shared.signOutAndRedirect(

@@ -55,7 +55,7 @@ struct ProfileCreationView: View {
         .alert("Profile Created!", isPresented: $showSuccess) {
             Button("Get Started") {
                 appState.isAuthenticated = true
-                appState.currentUserId = userId
+                appState.currentUserID = userId
                 path = NavigationPath()
             }
         } message: {

@@ -173,7 +173,7 @@ struct SignInView: View {
                         // Profile exists - user is fully set up
                         print("Existing profile found: \(existingProfile.username)")
                         appState.isAuthenticated = true
-                        appState.currentUserId = session.userId
+                        appState.currentUserID = session.userId
                         // TODO: Load profile into SwiftData
                         
                         // Sync activities from backend after sign-in

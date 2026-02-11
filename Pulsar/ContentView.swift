@@ -43,7 +43,7 @@ struct ProfileTabView: View {
     @Query private var profiles: [Profile]
     
     var currentProfile: Profile? {
-        guard let userId = appState.currentUserId else { return nil }
+        guard let userId = appState.currentUserID else { return nil }
         return profiles.first { $0.userId == userId }
     }
     
@@ -72,7 +72,7 @@ struct ProfileTabView: View {
                             if let profile = currentProfile {
                                 profile.useMetricUnits = newValue
                                 profile.updatedAt = Date()
-                            } else if let userId = appState.currentUserId {
+                            } else if let userId = appState.currentUserID {
                                 // Create a new profile if it doesn't exist
                                 let newProfile = Profile(
                                     userId: userId,

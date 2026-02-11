@@ -41,7 +41,7 @@ struct ActivitiesView: View {
             }
             .task {
                 // Sync activities when view appears if user is authenticated
-                if appState.isAuthenticated, let userId = appState.currentUserId {
+                if appState.isAuthenticated, let userId = appState.currentUserID {
                     await syncActivities()
                 }
             }
@@ -79,7 +79,7 @@ struct ActivitiesView: View {
     }
     
     private func syncActivities() async {
-        guard let userId = appState.currentUserId else { return }
+        guard let userId = appState.currentUserID else { return }
         
         isSyncing = true
         defer { isSyncing = false }
@@ -159,7 +159,7 @@ struct ActivityRow: View {
     }
     
     private func updateMetricPreference() {
-        guard let userId = appState.currentUserId else {
+        guard let userId = appState.currentUserID else {
             useMetric = false
             return
         }
