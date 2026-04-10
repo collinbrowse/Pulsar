@@ -1,7 +1,9 @@
 # Milestone 1 Complete - Supabase Backend Scaffolding ✅
 
-**Branch**: `milestone-1-supabase-backend`  
-**Status**: ✅ Complete  
+> **Note:** This document is a **historical record** for Milestone 1 only. For **current** delivery status across M0–M10, see the root [`README.md`](README.md).
+
+**Branch**: `milestone-1-supabase-backend`
+**Status**: ✅ Complete
 **Date**: October 27, 2025
 
 ---

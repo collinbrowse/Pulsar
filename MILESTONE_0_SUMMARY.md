@@ -1,7 +1,9 @@
 # Milestone 0 Complete - Project Bootstrap ✅
 
-**Branch**: `milestone-0-bootstrap`  
-**Status**: ✅ Complete  
+> **Note:** This document is a **historical record** for Milestone 0 only. For **current** delivery status across M0–M10, see the root [`README.md`](README.md).
+
+**Branch**: `milestone-0-bootstrap`
+**Status**: ✅ Complete
 **Date**: October 27, 2025
 
 ---
@@ -88,7 +90,7 @@ Automated quality checks on every push/PR:
 
 **Configuration**:
 - Runs on `macos-15` with Xcode 26
-- Tests on iOS Simulator (iPhone 16 Pro)
+- Tests on iOS Simulator (iPhone 17)
 - SPM dependency caching for faster builds
 
 ### 5. **Comprehensive Documentation** ✅

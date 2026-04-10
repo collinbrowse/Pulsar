@@ -5,13 +5,13 @@ project_id = "jlyamkhkgjkktiypywkk"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "graphql_public"]
+schemas = ["public", "app", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
 port = 54322
-major_version = 15
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -53,9 +53,7 @@ enable_confirmations = false
 
 # Apple Sign In
 [auth.external.apple]
-enabled = true
-client_id = ""
-secret = ""
+enabled = false
 
 [edge_runtime]
 enabled = true

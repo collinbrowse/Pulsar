@@ -112,7 +112,7 @@ Initialize repository, CI/CD, and project foundation for Pulsar activity trackin
 ### Build
 ```bash
 xcodebuild -project Pulsar.xcodeproj -scheme Pulsar \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   clean build CODE_SIGNING_ALLOWED=NO
 ```
 
@@ -121,7 +121,7 @@ Expected: ✅ BUILD SUCCEEDED
 ### Unit Tests
 ```bash
 xcodebuild test -project Pulsar.xcodeproj -scheme PulsarTests \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   CODE_SIGNING_ALLOWED=NO
 ```
 
@@ -136,7 +136,7 @@ Expected: ✅ No warnings or errors
 
 ### Run App
 1. Open `Pulsar.xcodeproj` in Xcode
-2. Select iPhone 16 Pro simulator
+2. Select iPhone 17 simulator
 3. Press `Cmd+R` to run
 
 Expected: App launches successfully with log messages:

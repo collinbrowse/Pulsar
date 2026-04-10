@@ -10,6 +10,7 @@ import Foundation
 @testable import Pulsar
 
 @Suite("Feature Flags Tests", .serialized)
+@MainActor
 struct FeatureFlagsTests {
     
     @Test("Feature flags should default to disabled")

@@ -5,62 +5,102 @@
 //  Created by Collin Browse on 10/27/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @Environment(AppState.self) private var appState
+    
     var body: some View {
-        NavigationSplitView {
+        TabView {
+            FeedView()
+                .tabItem {
+                    Label("Feed", systemImage: "house.fill")
+                }
+            
+            ActivitiesView()
+                .tabItem {
+                    Label("Activities", systemImage: "figure.run")
+                }
+            
+            Text("Segments")
+                .tabItem {
+                    Label("Segments", systemImage: "flag.fill")
+                }
+            
+            ProfileTabView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+        }
+    }
+}
+
+// Placeholder for Profile Tab
+struct ProfileTabView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Query private var profiles: [Profile]
+    
+    var currentProfile: Profile? {
+        guard let userId = appState.currentUserID else { return nil }
+        return profiles.first { $0.userId == userId }
+    }
+    
+    var body: some View {
+        NavigationStack {
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+                Section("Account") {
+                    if let profile = currentProfile {
+                        Text("@\(profile.username)")
+                            .font(.headline)
+                        if let fullName = profile.fullName {
+                            Text(fullName)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if let profile = appState.userProfile {
+                        Text("@\(profile.username)")
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+                
+                Section("Preferences") {
+                    Toggle("Use Metric Units", isOn: Binding(
+                        get: { 
+                            currentProfile?.useMetricUnits ?? false
+                        },
+                        set: { newValue in
+                            if let profile = currentProfile {
+                                profile.useMetricUnits = newValue
+                                profile.updatedAt = Date()
+                            } else if let userId = appState.currentUserID {
+                                // Create a new profile if it doesn't exist
+                                let newProfile = Profile(
+                                    userId: userId,
+                                    username: appState.userProfile?.username ?? "user",
+                                    useMetricUnits: newValue
+                                )
+                                modelContext.insert(newProfile)
+                            }
+                            try? modelContext.save()
+                        }
+                    ))
                 }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                
+                Section {
+                    Button("Sign Out", role: .destructive) {
+                        // Sign out logic
+                        AuthenticationService.shared.signOut()
+                        appState.isAuthenticated = false
                     }
                 }
             }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+            .navigationTitle("Profile")
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: Activity.self, inMemory: true)
+        .environment(AppState())
 }

@@ -1,5 +1,7 @@
 # 🚀 Getting Started with Pulsar
 
+> **Overall project status:** The app has moved well past Milestone 0. For the **current milestone checklist** (M0–M10) and CI reality, use the repository root [`README.md`](README.md).
+
 Welcome to the Pulsar activity tracking app! This guide will help you get up and running quickly.
 
 ## ✅ Milestone 0 Complete!
@@ -29,7 +31,7 @@ In Xcode:
 
 ### 3. Build and Run
 
-1. Select **iPhone 16 Pro** simulator
+1. Select **iPhone 17** simulator
 2. Press `Cmd+R`
 3. App should launch successfully! 🎉
 
@@ -43,6 +45,16 @@ Crashlytics disabled via feature flag
 ```
 
 This is expected - we haven't configured API keys yet.
+
+**Simulator-only console messages** you can ignore when running in the simulator:
+- `CHHapticPattern` / `hapticpatternlibrary.plist` – haptic feedback isn’t available in the simulator.
+- `UIKeyboardLayoutStar` / `Unable to simultaneously satisfy constraints` involving `_UIRemoteKeyboardPlaceholderView` – system keyboard layout in simulator.
+- `nano zone abandoned` / `malloc` – common simulator memory allocator message.
+- `Failed to send CA Event for app launch measurements` – Core Animation metrics in simulator.
+- `CoreData: error:` (long dumps) – when SwiftData migration fails, the framework logs these before the app recovers. Use `[Pulsar]` lines to follow app behavior.
+
+**Quieter console (optional)**  
+To hide system and Core Data verbose logs and only see `[Pulsar]` and your code: **Edit Scheme → Run → Arguments → Environment Variables** → add `OS_ACTIVITY_MODE` = `disable`. This turns off all `os_log` output (including frameworks), so use it when you need a clean console to trace app flow.
 
 ---
 
@@ -116,8 +128,19 @@ This is expected - we haven't configured API keys yet.
 ```bash
 # In Xcode: Cmd+U
 # Or command line:
-xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
+
+### Swift 6 Compliance
+
+The codebase is written for **Swift 6** with strict concurrency:
+
+- **Language mode**: In Xcode, set **Build Settings → Swift Language Version** to **Swift 6** (or leave default when using Xcode 16+).
+- **Strict concurrency**: With Swift 6, full concurrency checking is on by default. The project uses:
+  - `@MainActor` for UI and app state (`AppState`, `SupabaseClient`, `ObservabilityManager`, `FeatureFlags`)
+  - `Sendable` for types that cross isolation boundaries (models, errors, enums)
+  - No `[String: Any]` in public APIs; use `[String: String]` or `Data`/`Encodable` for Sendable safety
+- If you use an older Xcode with Swift 5, enable **Build Settings → Other Swift Flags**: `-strict-concurrency=complete` (warnings) to prepare for Swift 6.
 
 ### Run Linter
 
@@ -149,13 +172,14 @@ Current commits:
 
 ### Create Pull Request
 
-When ready to merge to `main`:
+Open PRs to **`develop`** (integration branch). **`main`** is advanced when the team promotes a release from `develop`; see [Branching strategy](docs/README.md#branching-strategy).
 
 ```bash
-# Push branch (if not already pushed)
-git push origin milestone-0-bootstrap
+git checkout develop && git pull
+# Push your feature branch (if not already pushed)
+git push origin <your-branch>
 
-# Then create PR on GitHub with the template
+# On GitHub: create PR with base branch develop (use the PR template)
 ```
 
 ---
@@ -325,8 +349,10 @@ Questions or issues? Check:
 
 **Ready for Milestone 1**: Backend integration with Supabase!
 
+For **where the project is now** (including milestones after M1), see the root [`README.md`](README.md).
+
 ---
 
 **Last Updated**: October 27, 2025  
-**Status**: ✅ Milestone 0 Complete
+**Status**: ✅ Milestone 0 Complete (historical — see note at top)
 

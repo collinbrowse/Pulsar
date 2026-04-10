@@ -4,12 +4,21 @@
 
 Pulsar is a production-quality iOS app for activity tracking and social fitness, inspired by Strava but built without in-app GPS recording. Users sync and import activities from various sources (GPX/TCX/FIT files, HealthKit, partner APIs) to power a rich social experience with feeds, segments, leaderboards, analytics, routes, clubs, challenges, and privacy controls.
 
+## Current implementation (April 2026)
+
+This document describes the **target product**. **What exists in the repo today** is a subset:
+
+- **Done in app:** foundation, Supabase backend, auth/onboarding, activity import (e.g. GPX), social feed, segments tab with backend-backed segments and leaderboard-style detail UI.
+- **Partial:** profile analytics / time filters (not full goals dashboard), route previews (not a routes hub), activity visibility (not full privacy zones), feature flags / observability (not a StoreKit paywall).
+- **Not shipped:** dedicated clubs, challenges, premium paywall, and several roadmap integrations (see root `README.md` milestone checklist).
+
 ## Tech Stack
 
 ### iOS App
 - **Platform**: iOS 26+ (Xcode 26, Swift 6.2)
 - **UI Framework**: SwiftUI (latest APIs)
-- **State Management**: TCA (The Composable Architecture)
+- **State management (today)**: Shared `AppState` (`@Observable`) and environment injection — see `AGENTS.md`
+- **State management (target / optional)**: The Composable Architecture (TCA) is listed in SPM docs for evolution; the shipping target **does not** import TCA modules yet
 - **Persistence**: SwiftData
 - **Concurrency**: Swift Concurrency (async/await, actors, Sendable)
 - **Testing**: Swift Testing framework (unit), XCTest (UI)
@@ -35,7 +44,7 @@ Pulsar is a production-quality iOS app for activity tracking and social fitness,
 Pulsar/
 ├── App/
 │   ├── PulsarApp.swift          # Main app entry point
-│   ├── AppState.swift            # Global TCA state
+│   ├── AppState.swift            # Global app state (@Observable)
 │   └── Config/
 │       ├── FeatureFlags.swift    # Feature flag management
 │       └── Environment.swift     # Environment configuration
@@ -44,11 +53,11 @@ Pulsar/
 │   ├── Import/                   # Activity file import
 │   ├── Feed/                     # Social feed & interactions
 │   ├── Segments/                 # Segments & leaderboards
-│   ├── Analytics/                # Dashboard & goals
-│   ├── Routes/                   # Route discovery & export
-│   ├── Clubs/                    # Clubs & challenges
-│   ├── Privacy/                  # Privacy controls
-│   └── Premium/                  # Subscription & paywall
+│   ├── Analytics/                # (Target) Dashboard & goals — not a full module yet
+│   ├── Routes/                   # (Target) Route discovery — previews exist on activities/segments
+│   ├── Clubs/                    # (Target) Not shipped
+│   ├── Privacy/                  # (Target) Partial — visibility on activities
+│   └── Premium/                  # (Target) Flags only — no paywall yet
 ├── Shared/
 │   ├── Models/                   # SwiftData models
 │   ├── Networking/               # API client
@@ -60,13 +69,16 @@ Pulsar/
 
 ## Architecture
 
-### TCA (The Composable Architecture)
+### SwiftUI + AppState (shipping pattern)
 
-Each feature is structured as a TCA module with:
-- **State**: Immutable state container
-- **Action**: User actions and side effects
-- **Reducer**: Pure state transformation logic
-- **Environment**: Dependencies (API client, parsers, etc.)
+Feature views read shared services and **`AppState`** from the SwiftUI environment. Coordinators and pure helpers (e.g. `*Flow` types) keep logic testable.
+
+### TCA (The Composable Architecture) — target shape
+
+If the project adopts TCA later, the intended module shape would be:
+- **State**, **Action**, **Reducer**, **Environment** per feature
+
+Until TCA is added as a dependency and used in targets, treat this as **design direction**, not a description of current files.
 
 ### SwiftData Models
 
@@ -123,13 +135,20 @@ Local persistence layer mirrors backend schema:
 
 ## Branching Strategy
 
-- `main`: Production-ready code
-- `milestone-N-feature-name`: Feature branches for each milestone
-- PRs must include:
-  - Description of changes
-  - Test plan
-  - Screenshot(s) of UI changes
-  - Checklist of acceptance criteria
+**Team rule:** integrate on **`develop`**, release from **`main`**.
+
+| Branch | Role |
+|--------|------|
+| **`develop`** | Default integration branch. Open **pull requests here** from feature branches. This is the line everyone bases daily work on (`git checkout develop && git pull`). |
+| **`main`** | **Production-ready** / release line. Updated by merging **`develop` → `main`** when you cut a release (or on an agreed rhythm), not by stacking unrelated feature PRs directly unless it is an exceptional hotfix process the team agrees on. |
+| **Feature branches** | Short-lived branches off **`develop`**, named by purpose (e.g. `milestone-3-activity-import`, `feature/feed-filters`, `fix/login-keychain`). Delete after merge. |
+
+**PRs into `develop` must include:**
+
+- Description of changes  
+- Test plan  
+- Screenshot(s) of UI changes when the UI changed  
+- Checklist of acceptance criteria  
 
 ## Naming Conventions
 
@@ -149,25 +168,27 @@ Local persistence layer mirrors backend schema:
 
 ### Setup
 1. Clone the repository
-2. Copy `.env.example` to `.env.local` and fill in credentials
-3. Open `Pulsar.xcodeproj` in Xcode 26
-4. Build and run on simulator or device
+2. **`git checkout develop`** and **`git pull`** (default integration branch; see **Branching Strategy** above)
+3. Copy `.env.example` to `.env.local` and fill in credentials
+4. Open `Pulsar.xcodeproj` in Xcode 26
+5. Build and run on simulator or device
 
 ### Running Tests
 ```bash
 # Swift Testing (unit tests)
-xcodebuild test -scheme Pulsar -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme Pulsar -destination 'platform=iOS Simulator,name=iPhone 17'
 
 # UI Tests (XCTest)
-xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
 ### CI/CD
-GitHub Actions workflows automatically:
-- Build the project on every push/PR
-- Run all tests
-- Check code coverage (target: 80%+)
-- Deploy to TestFlight on version tags (`v*`)
+GitHub Actions (see `.github/workflows/ci.yml`) runs on push/PR:
+- SwiftLint
+- Security checks (no committed env files, no obvious secret patterns in Swift)
+- Lightweight structure checks (Swift file count, required folders, key docs)
+
+**Full iOS build, unit tests, UI tests, and coverage** require **local Xcode 26** with the iOS SDK. Deploy / TestFlight are **not** wired in the checked-in workflow.
 
 ## API Documentation
 

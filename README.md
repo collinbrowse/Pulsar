@@ -1,162 +1,123 @@
-# Pulsar - Activity Tracking & Social Fitness
+# 📱 Pulsar - Activity Tracking & Social Fitness
 
-A production-quality iOS app for activity tracking and social fitness, built with Swift 6.2, SwiftUI, and TCA.
+**Production-Quality iOS Application**  
+iOS 26+ | Swift 6.2 | SwiftUI | Supabase
 
-## Quick Start
+---
+
+## 🎯 Quick Start
 
 ### Prerequisites
+- Xcode 26+
+- iOS 26.0 SDK
+- macOS 15 (Sonoma)+
 
-- **Xcode 26** or later
-- **iOS 26.0** SDK
-- **macOS 15** (Sonoma) or later
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/pulsar.git
-   cd pulsar
-   ```
-
-2. **Configure environment variables**
-   
-   Copy `.env.example` to create your local environment file:
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Edit `.env.local` and add your API keys:
-   ```bash
-   # Required for backend functionality
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_ANON_KEY=your-anon-key-here
-   
-   # Optional: Analytics and observability
-   POSTHOG_API_KEY=your-posthog-api-key
-   ENABLE_ANALYTICS=false
-   ENABLE_CRASHLYTICS=false
-   
-   # Optional: Mapbox (feature-flagged)
-   MAPBOX_TOKEN=your-mapbox-token-here
-   USE_MAPBOX=false
-   ```
-
-3. **Open the project**
-   ```bash
-   open Pulsar.xcodeproj
-   ```
-
-4. **Build and run**
-   - Select a simulator or device
-   - Press `Cmd+R` to build and run
-
-### Running Tests
-
-**Swift Testing (Unit Tests)**
+### Setup & Run
 ```bash
-xcodebuild test \
-  -project Pulsar.xcodeproj \
-  -scheme PulsarTests \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+git clone https://github.com/your-username/pulsar.git
+cd pulsar
+cp .env.example .env.local
+# Edit .env.local with your API keys
+open Pulsar.xcodeproj
+# Press Cmd+R to run
 ```
 
-**XCTest (UI Tests)**
+---
+
+## 📚 Documentation
+
+**Index inside Xcode:** [`Pulsar/Documentation/README.md`](Pulsar/Documentation/README.md) (links out to the rest of the repo).
+
+### 📂 Quick links
+- [Documentation index](Pulsar/Documentation/README.md)
+- [Getting started](GETTING_STARTED.md) (repo root)
+- [Milestones summary](Pulsar/Documentation/Milestones/MILESTONES_SUMMARY.md)
+- [Development metrics](Pulsar/Documentation/METRICS.md)
+- [Product / architecture spec](docs/README.md)
+- [API](docs/API.md)
+- [Supabase setup](infra/SUPABASE_SETUP.md)
+
+---
+
+## 🏗️ Tech Stack
+
+- **iOS**: Swift 6.2, SwiftUI, SwiftData
+- **Backend**: Supabase (PostgreSQL + PostGIS)
+- **Testing**: Swift Testing + XCTest
+- **Analytics**: PostHog
+- **Crash Reporting**: Firebase Crashlytics
+
+---
+
+## ✅ Progress
+
+Status below matches the **current codebase and recent commits** (verified April 2026).
+
+- [x] M0: Foundation (CI/CD, project setup)
+- [x] M1: Backend scaffolding (Supabase, database)
+- [x] M2: Authentication & profiles
+- [x] M3: Activity import (GPX/TCX/FIT)
+- [x] M4: Social feed basics
+- [x] M5: Segments & leaderboards (segments tab, Supabase-backed list, segment detail with leaderboard UI)
+- [ ] M6: Analytics & goals (**partial:** profile aggregates and time filters; goals, charts, and notifications not shipped)
+- [ ] M7: Routes & discovery (**partial:** route previews and coordinates on activities/segments; no dedicated routes product)
+- [ ] M8: Clubs & challenges (not shipped)
+- [ ] M9: Privacy controls (**partial:** visibility on activities; privacy zones and full settings not shipped)
+- [ ] M10: Premium tier (**partial:** feature flags / observability hooks; no StoreKit paywall)
+
+**See:** [Milestones Summary](Pulsar/Documentation/Milestones/MILESTONES_SUMMARY.md) for details.
+
+---
+
+## 🧪 Testing
+
 ```bash
-xcodebuild test \
-  -project Pulsar.xcodeproj \
-  -scheme PulsarUITests \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+# Run all tests
+xcodebuild test -project Pulsar.xcodeproj -scheme Pulsar
+
+# Or in Xcode
+Cmd+U
 ```
 
-Or simply press `Cmd+U` in Xcode to run all tests.
+**Current status (approximate from sources):**
+- ✅ On the order of **100+** Swift Testing `@Test` cases across `PulsarTests` (run **Cmd+U** / `xcodebuild test` for the exact count and pass state).
+- ✅ **~19** UI test methods in `PulsarUITests`.
+- Coverage percentage is **not** produced in CI; treat **80%+** as a **goal** when running coverage locally.
+
+---
+
+**Production readiness (run before release)**
+
+1. **Unit tests**: `xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` (or your simulator)
+2. **UI tests**: `xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
+3. **Build**: `xcodebuild -scheme Pulsar -destination 'generic/platform=iOS Simulator' build`
+4. **Lint**: `swiftlint lint`
+5. **Security**: No `.env` or `.env.local` committed; no hardcoded `sk_live_`, `pk_live_`, `ghp_`, or `gho_` in Swift files.
+
+CI runs lint, security checks, and code-structure verification on push/PR. Full build and tests require local Xcode with iOS SDK.
 
 ## Architecture
 
-- **State Management**: TCA (The Composable Architecture)
-- **Persistence**: SwiftData
-- **Networking**: URLSession with async/await
-- **UI**: SwiftUI
-- **Testing**: Swift Testing framework
+## 🚀 CI/CD
 
-See [docs/README.md](docs/README.md) for detailed architecture documentation.
+**Git:** day-to-day work merges to **`develop`**; **`main`** is updated when promoting a release. Details: [Branching strategy](docs/README.md#branching-strategy).
 
-## Project Structure
+GitHub Actions runs on pushes and PRs to `main` and `develop` (see `.github/workflows/ci.yml`):
 
-```
-Pulsar/
-├── App/                    # App entry point and global state
-├── Features/               # Feature modules (Onboarding, Feed, etc.)
-├── Shared/                 # Shared models, networking, UI components
-└── Resources/              # Assets and resources
+- ✅ SwiftLint (macOS runner; warnings allowed)
+- ✅ Security checks (no committed `.env`, no hardcoded live keys in Swift)
+- ✅ Code structure verification (Swift file count, test dirs, core folders, key docs)
 
-PulsarTests/               # Unit tests (Swift Testing)
-PulsarUITests/             # UI tests (XCTest)
-docs/                      # Documentation
-```
+Full **build, unit tests, and UI tests** require **local Xcode 26** with the iOS 26 SDK (not available on the current CI runners).
 
-## Development
+---
 
-### Branching Strategy
-
-- `main` - Production-ready code
-- `milestone-N-feature` - Feature branches for each milestone
-- Create PRs with description, test plan, and screenshots
-
-### Code Style
-
-- Follow Swift API Design Guidelines
-- Run SwiftLint before committing: `swiftlint lint`
-- Format code consistently (use Xcode's default formatting)
-
-### Continuous Integration
-
-GitHub Actions automatically runs on every push and PR:
-- ✅ Build verification
-- ✅ Unit tests
-- ✅ UI tests
-- ✅ Code coverage reporting
-- ✅ Linting with SwiftLint
-- ✅ Security checks
-
-## Feature Flags
-
-The app uses feature flags for gradual rollout:
-
-- `ENABLE_ANALYTICS` - PostHog analytics (default: false)
-- `ENABLE_CRASHLYTICS` - Firebase Crashlytics (default: false)
-- `USE_MAPBOX` - Mapbox instead of MapKit (default: false)
-
-Set these in your `.env.local` file or via Xcode scheme environment variables.
-
-## Backend
-
-The app uses **Supabase** for backend services:
-- PostgreSQL + PostGIS for geospatial data
-- Supabase Auth for authentication
-- Supabase Storage for activity files
-- Edge Functions for business logic
-
-See [docs/API.md](docs/API.md) for API documentation.
-
-## Milestones
-
-- [x] **Milestone 0**: Repository, CI, project bootstrap
-- [ ] **Milestone 1**: Supabase backend scaffolding
-- [ ] **Milestone 2**: Auth & user profiles
-- [ ] **Milestone 3**: Activity import pipeline
-- [ ] **Milestone 4**: Feed & social
-- [ ] **Milestone 5**: Segments & leaderboards
-- [ ] **Milestone 6**: Analytics & goals
-- [ ] **Milestone 7**: Routes & discovery
-- [ ] **Milestone 8**: Clubs & challenges
-- [ ] **Milestone 9**: Privacy & data controls
-- [ ] **Milestone 10**: Premium tier & monetization
-
-## License
+## 📄 License
 
 Proprietary - All rights reserved
 
-## Support
+---
 
-For questions or issues, please open a GitHub issue or contact the development team.
+## 🆘 Support
 
+Start from [`Pulsar/Documentation/README.md`](Pulsar/Documentation/README.md) for an index of all guides (setup, API, infra, milestones).
