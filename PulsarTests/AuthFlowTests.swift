@@ -83,6 +83,13 @@ struct AuthFlowTests {
         ) async throws -> Data {
             Data()
         }
+        
+        func upsert<T: Encodable>(
+            table: String,
+            data: T,
+            accessToken: String?,
+            schema: String?
+        ) async throws {}
     }
     
     // MARK: - Sign Up

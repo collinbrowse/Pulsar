@@ -5,6 +5,7 @@
 //  SwiftData Models for local persistence
 //
 
+import CoreLocation
 import Foundation
 import SwiftData
 
@@ -32,6 +33,7 @@ final class Profile {
     var totalElevationMeters: Double
     var followersCount: Int
     var followingCount: Int
+    var useMetricUnits: Bool
     
     @Relationship(deleteRule: .cascade, inverse: \Activity.profile)
     var activities: [Activity]?
@@ -46,7 +48,8 @@ final class Profile {
         weightKg: Double? = nil,
         birthYear: Int? = nil,
         location: String? = nil,
-        isPrivate: Bool = false
+        isPrivate: Bool = false,
+        useMetricUnits: Bool = true
     ) {
         self.userId = userId
         self.username = username
@@ -66,6 +69,7 @@ final class Profile {
         self.totalElevationMeters = 0
         self.followersCount = 0
         self.followingCount = 0
+        self.useMetricUnits = useMetricUnits
     }
     
     var displayName: String {
@@ -75,6 +79,15 @@ final class Profile {
     var age: Int? {
         guard let birthYear = birthYear else { return nil }
         return Calendar.current.component(.year, from: Date()) - birthYear
+    }
+    
+    func toDTO() -> ProfileDTO {
+        ProfileDTO(
+            userId: userId,
+            username: username,
+            fullName: fullName,
+            avatarUrl: avatarURL?.absoluteString
+        )
     }
 }
 
@@ -204,6 +217,33 @@ final class Activity {
     
     func setCoordinates(_ coords: [Coordinate]) {
         routeData = try? JSONEncoder().encode(coords)
+    }
+    
+    /// Route points for map views, derived from stored `Coordinate` route data.
+    var trackPoints: [TrackPoint]? {
+        let coords = coordinates
+        guard !coords.isEmpty else { return nil }
+        return coords.map { coord in
+            TrackPoint(
+                latitude: coord.latitude,
+                longitude: coord.longitude,
+                timestamp: coord.time ?? startDate,
+                elevation: coord.elevation
+            )
+        }
+    }
+}
+
+// MARK: - Track Point (route sample for MapKit)
+
+struct TrackPoint: Codable, Sendable, Hashable {
+    var latitude: Double
+    var longitude: Double
+    var timestamp: Date
+    var elevation: Double?
+    
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 }
 
@@ -437,7 +477,7 @@ enum Visibility: String, Codable, CaseIterable, Sendable {
 }
 
 enum FollowStatus: String, Codable, Sendable {
-    case pending = "pending"
-    case accepted = "accepted"
-    case blocked = "blocked"
+    case pending
+    case accepted
+    case blocked
 }

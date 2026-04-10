@@ -35,11 +35,18 @@ protocol SupabaseClientProtocol {
         body: Data?,
         accessToken: String?
     ) async throws -> Data
+    
+    func upsert<T: Encodable>(
+        table: String,
+        data: T,
+        accessToken: String?,
+        schema: String?
+    ) async throws
 }
 
 /// Supabase API client for backend communication
 @MainActor
-final class SupabaseClient: SupabaseClientProtocol {
+final class SupabaseClient: SupabaseClientProtocol { // swiftlint:disable:this type_body_length
     static let shared = SupabaseClient()
     
     private static let networkLogger = Logger(subsystem: "com.collinbrowse.Pulsar", category: "Network")
@@ -61,6 +68,9 @@ final class SupabaseClient: SupabaseClientProtocol {
     func signUp(email: String, password: String, metadata: [String: String] = [:]) async throws -> User {
         let endpoint = baseURL.appendingPathComponent("/auth/v1/signup")
         
+        Self.networkLogger.info("📤 Signup Request: POST \(endpoint.absoluteString)")
+        Self.networkLogger.debug("📤 Signup Body: email=\(email), metadata=\(metadata)")
+        
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -80,6 +90,7 @@ final class SupabaseClient: SupabaseClientProtocol {
         Self.logResponse(path: "/auth/v1/signup", response: response, data: data)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            Self.networkLogger.error("❌ Signup: Invalid HTTP response")
             throw NetworkError.invalidResponse
         }
         
@@ -88,18 +99,25 @@ final class SupabaseClient: SupabaseClientProtocol {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode, serverMessage: serverMessage)
         }
         
-        // Parse response
+        // Parse response - Supabase returns user object directly at top level
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let userId = json?["id"] as? String else {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                Self.networkLogger.error("❌ Failed to parse user ID from response: \(jsonString)")
+                print("Failed to parse user ID from response: \(jsonString)")
+            }
             throw NetworkError.invalidData
         }
         
+        Self.networkLogger.info("✅ Signup Success: userId=\(userId)")
         return User(id: userId, email: email)
     }
     
     func signIn(email: String, password: String) async throws -> Session {
         // GoTrue requires grant_type as a query parameter; body is JSON with email/password only.
-        var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true) else {
+            throw NetworkError.invalidResponse
+        }
         components.queryItems = [URLQueryItem(name: "grant_type", value: "password")]
         guard let endpoint = components.url else {
             throw NetworkError.invalidResponse
@@ -119,9 +137,9 @@ final class SupabaseClient: SupabaseClientProtocol {
         Self.logRequest(path: "/auth/v1/token", method: "POST", bodySummary: "signIn email=\(email)")
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         Self.logResponse(path: "/auth/v1/token", response: response, data: data)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
@@ -133,17 +151,30 @@ final class SupabaseClient: SupabaseClientProtocol {
         
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let accessToken = json?["access_token"] as? String,
-              let userId = (json?["user"] as? [String: Any])?["id"] as? String else {
+              let refreshToken = json?["refresh_token"] as? String,
+              let userDict = json?["user"] as? [String: Any],
+              let userId = userDict["id"] as? String else {
+            if let jsonString = String(data: data, encoding: .utf8) {
+                Self.networkLogger.error("❌ Failed to parse session from response: \(jsonString)")
+                print("Failed to parse session from response: \(jsonString)")
+            }
             throw NetworkError.invalidData
         }
-        let refreshToken = json?["refresh_token"] as? String
-        
-        return Session(accessToken: accessToken, userId: userId, refreshToken: refreshToken)
+        let expiresIn = json?["expires_in"] as? Int
+
+        return Session(
+            accessToken: accessToken,
+            userId: userId,
+            refreshToken: refreshToken,
+            expiresInSeconds: expiresIn
+        )
     }
-    
+
     /// Restore session using a saved refresh token (e.g. on app launch).
     func refreshSession(refreshToken: String) async throws -> Session {
-        var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("/auth/v1/token"), resolvingAgainstBaseURL: true) else {
+            throw NetworkError.invalidResponse
+        }
         components.queryItems = [URLQueryItem(name: "grant_type", value: "refresh_token")]
         guard let endpoint = components.url else {
             throw NetworkError.invalidResponse
@@ -153,7 +184,7 @@ final class SupabaseClient: SupabaseClientProtocol {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        
+
         let body: [String: Any] = ["refresh_token": refreshToken]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
@@ -169,15 +200,21 @@ final class SupabaseClient: SupabaseClientProtocol {
                 ?? Self.signInFriendlyMessage(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0)
             throw NetworkError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0, serverMessage: serverMessage)
         }
-        
+
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let accessToken = json?["access_token"] as? String,
               let userId = (json?["user"] as? [String: Any])?["id"] as? String else {
             throw NetworkError.invalidData
         }
         let newRefreshToken = json?["refresh_token"] as? String ?? refreshToken
-        
-        return Session(accessToken: accessToken, userId: userId, refreshToken: newRefreshToken)
+        let expiresIn = json?["expires_in"] as? Int
+
+        return Session(
+            accessToken: accessToken,
+            userId: userId,
+            refreshToken: newRefreshToken,
+            expiresInSeconds: expiresIn
+        )
     }
     
     // MARK: - REST API
@@ -195,7 +232,7 @@ final class SupabaseClient: SupabaseClientProtocol {
         ) else {
             throw NetworkError.invalidResponse
         }
-        
+
         var components = baseComponents
         
         var queryItems: [URLQueryItem] = [
@@ -211,13 +248,15 @@ final class SupabaseClient: SupabaseClientProtocol {
         guard let url = components.url else {
             throw NetworkError.invalidResponse
         }
-        
+
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        
+
         if let token = accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         }
         if let schema = schema {
             request.setValue(schema, forHTTPHeaderField: "Accept-Profile")
@@ -226,20 +265,20 @@ final class SupabaseClient: SupabaseClientProtocol {
         Self.logRequest(path: "/rest/v1/\(table)", method: "GET", bodySummary: "select=\(select)")
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         Self.logResponse(path: "/rest/v1/\(table)", response: response, data: data)
-        
+
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0, serverMessage: nil)
         }
-        
+
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode([T].self, from: data)
     }
-    
+
     /// Calls a Supabase PostgREST RPC (e.g. app.get_user_feed). Returns decoded rows.
     func rpc<T: Decodable>(
         name: String,
@@ -253,7 +292,7 @@ final class SupabaseClient: SupabaseClientProtocol {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        
+
         if let token = accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -261,22 +300,22 @@ final class SupabaseClient: SupabaseClientProtocol {
             request.setValue(schema, forHTTPHeaderField: "Accept-Profile")
             request.setValue(schema, forHTTPHeaderField: "Content-Profile")
         }
-        
+
         if !params.isEmpty {
             request.httpBody = try JSONSerialization.data(withJSONObject: params)
         }
-        
+
         Self.logRequest(path: "/rest/v1/rpc/\(name)", method: "POST", bodySummary: "\(params.count) params")
-        
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         Self.logResponse(path: "/rest/v1/rpc/\(name)", response: response, data: data)
-        
+
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0, serverMessage: nil)
         }
-        
+
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .iso8601
@@ -320,6 +359,48 @@ final class SupabaseClient: SupabaseClientProtocol {
         return data
     }
     
+    /// PostgREST upsert (insert or update on conflict). Uses `app` or `public` schema via Content-Profile.
+    func upsert<T: Encodable>(
+        table: String,
+        data: T,
+        accessToken: String?,
+        schema: String?
+    ) async throws {
+        let endpoint = baseURL.appendingPathComponent("/rest/v1/\(table)")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("return=minimal,resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
+        
+        if let token = accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let schema {
+            request.setValue(schema, forHTTPHeaderField: "Accept-Profile")
+            request.setValue(schema, forHTTPHeaderField: "Content-Profile")
+        }
+        
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(data)
+        
+        Self.logRequest(path: "/rest/v1/\(table)", method: "POST", bodySummary: "upsert")
+        
+        let (bodyData, response) = try await URLSession.shared.data(for: request)
+        
+        Self.logResponse(path: "/rest/v1/\(table)", response: response, data: bodyData)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            let msg = Self.parseAuthErrorBody(bodyData)
+            throw NetworkError.httpError(
+                statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0,
+                serverMessage: msg
+            )
+        }
+    }
+
     // MARK: - Network logging
     
     private static func logRequest(path: String, method: String, bodySummary: String) {
@@ -399,7 +480,7 @@ enum NetworkError: Error, LocalizedError, Sendable {
     case invalidData
     case httpError(statusCode: Int, serverMessage: String?)
     case unauthorized
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidResponse:

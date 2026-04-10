@@ -81,6 +81,15 @@ struct SocialStatsRow: Codable, Sendable {
     }
 }
 
+// MARK: - app.profiles (Supabase)
+
+struct ProfileDTO: Codable, Sendable {
+    let userId: String
+    let username: String
+    let fullName: String?
+    let avatarUrl: String?
+}
+
 // MARK: - Segments table (app.segments)
 
 struct SegmentRowDTO: Codable, Sendable {

@@ -4,12 +4,21 @@
 
 Pulsar is a production-quality iOS app for activity tracking and social fitness, inspired by Strava but built without in-app GPS recording. Users sync and import activities from various sources (GPX/TCX/FIT files, HealthKit, partner APIs) to power a rich social experience with feeds, segments, leaderboards, analytics, routes, clubs, challenges, and privacy controls.
 
+## Current implementation (April 2026)
+
+This document describes the **target product**. **What exists in the repo today** is a subset:
+
+- **Done in app:** foundation, Supabase backend, auth/onboarding, activity import (e.g. GPX), social feed, segments tab with backend-backed segments and leaderboard-style detail UI.
+- **Partial:** profile analytics / time filters (not full goals dashboard), route previews (not a routes hub), activity visibility (not full privacy zones), feature flags / observability (not a StoreKit paywall).
+- **Not shipped:** dedicated clubs, challenges, premium paywall, and several roadmap integrations (see root `README.md` milestone checklist).
+
 ## Tech Stack
 
 ### iOS App
 - **Platform**: iOS 26+ (Xcode 26, Swift 6.2)
 - **UI Framework**: SwiftUI (latest APIs)
-- **State Management**: TCA (The Composable Architecture)
+- **State management (today)**: Shared `AppState` (`@Observable`) and environment injection — see `AGENTS.md`
+- **State management (target / optional)**: The Composable Architecture (TCA) is listed in SPM docs for evolution; the shipping target **does not** import TCA modules yet
 - **Persistence**: SwiftData
 - **Concurrency**: Swift Concurrency (async/await, actors, Sendable)
 - **Testing**: Swift Testing framework (unit), XCTest (UI)
@@ -35,7 +44,7 @@ Pulsar is a production-quality iOS app for activity tracking and social fitness,
 Pulsar/
 ├── App/
 │   ├── PulsarApp.swift          # Main app entry point
-│   ├── AppState.swift            # Global TCA state
+│   ├── AppState.swift            # Global app state (@Observable)
 │   └── Config/
 │       ├── FeatureFlags.swift    # Feature flag management
 │       └── Environment.swift     # Environment configuration
@@ -44,11 +53,11 @@ Pulsar/
 │   ├── Import/                   # Activity file import
 │   ├── Feed/                     # Social feed & interactions
 │   ├── Segments/                 # Segments & leaderboards
-│   ├── Analytics/                # Dashboard & goals
-│   ├── Routes/                   # Route discovery & export
-│   ├── Clubs/                    # Clubs & challenges
-│   ├── Privacy/                  # Privacy controls
-│   └── Premium/                  # Subscription & paywall
+│   ├── Analytics/                # (Target) Dashboard & goals — not a full module yet
+│   ├── Routes/                   # (Target) Route discovery — previews exist on activities/segments
+│   ├── Clubs/                    # (Target) Not shipped
+│   ├── Privacy/                  # (Target) Partial — visibility on activities
+│   └── Premium/                  # (Target) Flags only — no paywall yet
 ├── Shared/
 │   ├── Models/                   # SwiftData models
 │   ├── Networking/               # API client
@@ -60,13 +69,16 @@ Pulsar/
 
 ## Architecture
 
-### TCA (The Composable Architecture)
+### SwiftUI + AppState (shipping pattern)
 
-Each feature is structured as a TCA module with:
-- **State**: Immutable state container
-- **Action**: User actions and side effects
-- **Reducer**: Pure state transformation logic
-- **Environment**: Dependencies (API client, parsers, etc.)
+Feature views read shared services and **`AppState`** from the SwiftUI environment. Coordinators and pure helpers (e.g. `*Flow` types) keep logic testable.
+
+### TCA (The Composable Architecture) — target shape
+
+If the project adopts TCA later, the intended module shape would be:
+- **State**, **Action**, **Reducer**, **Environment** per feature
+
+Until TCA is added as a dependency and used in targets, treat this as **design direction**, not a description of current files.
 
 ### SwiftData Models
 
@@ -163,11 +175,12 @@ xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=
 ```
 
 ### CI/CD
-GitHub Actions workflows automatically:
-- Build the project on every push/PR
-- Run all tests
-- Check code coverage (target: 80%+)
-- Deploy to TestFlight on version tags (`v*`)
+GitHub Actions (see `.github/workflows/ci.yml`) runs on push/PR:
+- SwiftLint
+- Security checks (no committed env files, no obvious secret patterns in Swift)
+- Lightweight structure checks (Swift file count, required folders, key docs)
+
+**Full iOS build, unit tests, UI tests, and coverage** require **local Xcode 26** with the iOS SDK. Deploy / TestFlight are **not** wired in the checked-in workflow.
 
 ## API Documentation
 

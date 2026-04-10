@@ -1,3 +1,7 @@
+# Current status (April 2026)
+
+Milestones **M0–M5** are reflected in the shipping app (through segments and leaderboard-style UI). **M6–M10** are partial or not built out; the root `README.md` checklist and `docs/README.md` “Current implementation” section are kept in sync with that reality. CI runs lint and security/structure checks only until Xcode 26+iOS SDK are available on runners.
+
 # The Big Picture
 Pulsar is like a personal mission control for your activities. You open it, and it tells you what you have done, what matters, and how your profile is trending. Think of it as your activity dashboard with personality.
 

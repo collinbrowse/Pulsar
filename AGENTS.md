@@ -1,6 +1,8 @@
 # Project Overview
 Pulsar is an iOS app focused on activity, segments, and profile insights. It uses SwiftUI with shared flows for networking, analytics, and app state.
 
+**Delivery status (milestones, CI):** see the root `README.md` and `Pulsar/Documentation/Milestones/MILESTONES_SUMMARY.md` — not duplicated here.
+
 # Architecture Decisions
 - SwiftUI-first UI with small feature views per domain (Activity, Feed, Onboarding, Profile, Segments).
 - Shared logic lives in `Shared/Logic` for flows that coordinate models and networking.

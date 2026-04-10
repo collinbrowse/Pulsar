@@ -1,14 +1,14 @@
 //
-//  ActivityDetailView.swift
+//  FeedActivityDetailView.swift
 //  Pulsar
 //
-//  Detailed view of a single activity with map, stats, and social
+//  Detailed view of a single feed activity with map, stats, and social
 //
 
-import SwiftUI
 import MapKit
+import SwiftUI
 
-struct ActivityDetailView: View {
+struct FeedActivityDetailView: View {
     let activity: ActivityData
     
     @Environment(\.dismiss) private var dismiss
@@ -23,7 +23,7 @@ struct ActivityDetailView: View {
                 VStack(spacing: 0) {
                     // Map
                     if activity.hasRoute {
-                        ActivityMapView(coordinates: activity.routeCoordinates)
+                        FeedActivityRouteMapView(coordinates: activity.routeCoordinates)
                             .frame(height: 300)
                             .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
                             .padding(.horizontal, Spacing.md)
@@ -359,7 +359,7 @@ struct DetailedStatsGrid: View {
     }
 }
 
-struct ActivityMapView: View {
+struct FeedActivityRouteMapView: View {
     let coordinates: [Coordinate]
     
     @State private var mapRegion: MKCoordinateRegion?
@@ -460,5 +460,5 @@ struct CommentData: Identifiable {
 }
 
 #Preview {
-    ActivityDetailView(activity: SampleData.activities[0])
+    FeedActivityDetailView(activity: SampleData.activities[0])
 }

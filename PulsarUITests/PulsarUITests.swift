@@ -8,7 +8,6 @@
 import XCTest
 
 final class PulsarUITests: XCTestCase {
-    
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
@@ -280,5 +279,4 @@ final class PulsarUITests: XCTestCase {
         if createAccountTitle.waitForExistence(timeout: 2) { return true }
         return app.staticTexts["Welcome Back"].waitForExistence(timeout: 2)
     }
-
 }

@@ -5,8 +5,8 @@
 //  Social activity feed showing followed users' activities
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct FeedView: View {
     @Environment(AppState.self) private var appState
@@ -79,7 +79,7 @@ struct FeedView: View {
         }
         .sheet(isPresented: $showActivityDetail) {
             if let activity = selectedActivity {
-                ActivityDetailView(activity: activity)
+                FeedActivityDetailView(activity: activity)
             }
         }
     }

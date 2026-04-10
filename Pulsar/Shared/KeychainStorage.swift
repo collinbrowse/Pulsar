@@ -37,7 +37,7 @@ enum KeychainStorage {
         SecItemAdd(addQuery as CFDictionary, nil)
     }
     
-    static func loadSession() -> (userId: String, accessToken: String, refreshToken: String?)? {
+    static func loadSession() -> PersistedSession? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -55,7 +55,7 @@ enum KeychainStorage {
             return nil
         }
         
-        return (session.userId, session.accessToken, session.refreshToken)
+        return session
     }
     
     static func clearSession() {
@@ -66,4 +66,65 @@ enum KeychainStorage {
         ]
         SecItemDelete(query as CFDictionary)
     }
+}
+
+// MARK: - Generic string keychain (e.g. full auth session JSON)
+
+final class KeychainManager {
+    static let shared = KeychainManager()
+    private let service = "com.collinbrowse.Pulsar"
+    private init() {}
+    
+    func save(key: String, value: String) throws {
+        guard let data = value.data(using: .utf8) else {
+            throw KeychainManagerError.encodingFailed
+        }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(query as CFDictionary)
+        var addQuery = query
+        addQuery[kSecValueData as String] = data
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw KeychainManagerError.saveFailed(status)
+        }
+    }
+    
+    func load(key: String) throws -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let string = String(data: data, encoding: .utf8) else {
+            throw KeychainManagerError.loadFailed(status)
+        }
+        return string
+    }
+    
+    func delete(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+
+enum KeychainManagerError: Error {
+    case encodingFailed
+    case saveFailed(OSStatus)
+    case loadFailed(OSStatus)
 }

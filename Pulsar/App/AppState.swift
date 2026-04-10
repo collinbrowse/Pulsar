@@ -16,9 +16,12 @@ final class AppState {
     
     /// Whether the user is currently authenticated
     var isAuthenticated: Bool = false
-    
+
     /// Current user's ID (from Supabase Auth)
     var currentUserID: String?
+
+    /// Error message to display on login screen after auth failure
+    var authErrorMessage: String?
     
     /// Current user's access token
     var accessToken: String?

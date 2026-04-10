@@ -1,5 +1,7 @@
 # 🚀 Getting Started with Pulsar
 
+> **Overall project status:** The app has moved well past Milestone 0. For the **current milestone checklist** (M0–M10) and CI reality, use the repository root [`README.md`](README.md).
+
 Welcome to the Pulsar activity tracking app! This guide will help you get up and running quickly.
 
 ## ✅ Milestone 0 Complete!
@@ -346,8 +348,10 @@ Questions or issues? Check:
 
 **Ready for Milestone 1**: Backend integration with Supabase!
 
+For **where the project is now** (including milestones after M1), see the root [`README.md`](README.md).
+
 ---
 
 **Last Updated**: October 27, 2025  
-**Status**: ✅ Milestone 0 Complete
+**Status**: ✅ Milestone 0 Complete (historical — see note at top)
 
