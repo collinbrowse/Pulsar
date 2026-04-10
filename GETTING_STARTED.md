@@ -172,13 +172,14 @@ Current commits:
 
 ### Create Pull Request
 
-When ready to merge to `main`:
+Open PRs to **`develop`** (integration branch). **`main`** is advanced when the team promotes a release from `develop`; see [Branching strategy](docs/README.md#branching-strategy).
 
 ```bash
-# Push branch (if not already pushed)
-git push origin milestone-0-bootstrap
+git checkout develop && git pull
+# Push your feature branch (if not already pushed)
+git push origin <your-branch>
 
-# Then create PR on GitHub with the template
+# On GitHub: create PR with base branch develop (use the PR template)
 ```
 
 ---

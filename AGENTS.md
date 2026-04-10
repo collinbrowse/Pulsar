@@ -9,6 +9,8 @@ Pulsar is an iOS app focused on activity, segments, and profile insights. It use
 - Shared models and DTOs are isolated in `Shared/Models` and `Shared/Networking`.
 - App-level state is centralized in `AppState` and referenced by Root and tabs.
 
+**Git:** Default PR target is **`develop`**; **`main`** is for production-ready releases (merge `develop` → `main` when cutting a release). See `docs/README.md` → **Branching Strategy**.
+
 # Conventions and Patterns
 - SwiftUI view structs conform to `View` and render UI in `body`.
 - Use async/await for networking and background work.

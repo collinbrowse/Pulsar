@@ -135,13 +135,20 @@ Local persistence layer mirrors backend schema:
 
 ## Branching Strategy
 
-- `main`: Production-ready code
-- `milestone-N-feature-name`: Feature branches for each milestone
-- PRs must include:
-  - Description of changes
-  - Test plan
-  - Screenshot(s) of UI changes
-  - Checklist of acceptance criteria
+**Team rule:** integrate on **`develop`**, release from **`main`**.
+
+| Branch | Role |
+|--------|------|
+| **`develop`** | Default integration branch. Open **pull requests here** from feature branches. This is the line everyone bases daily work on (`git checkout develop && git pull`). |
+| **`main`** | **Production-ready** / release line. Updated by merging **`develop` → `main`** when you cut a release (or on an agreed rhythm), not by stacking unrelated feature PRs directly unless it is an exceptional hotfix process the team agrees on. |
+| **Feature branches** | Short-lived branches off **`develop`**, named by purpose (e.g. `milestone-3-activity-import`, `feature/feed-filters`, `fix/login-keychain`). Delete after merge. |
+
+**PRs into `develop` must include:**
+
+- Description of changes  
+- Test plan  
+- Screenshot(s) of UI changes when the UI changed  
+- Checklist of acceptance criteria  
 
 ## Naming Conventions
 
@@ -161,9 +168,10 @@ Local persistence layer mirrors backend schema:
 
 ### Setup
 1. Clone the repository
-2. Copy `.env.example` to `.env.local` and fill in credentials
-3. Open `Pulsar.xcodeproj` in Xcode 26
-4. Build and run on simulator or device
+2. **`git checkout develop`** and **`git pull`** (default integration branch; see **Branching Strategy** above)
+3. Copy `.env.example` to `.env.local` and fill in credentials
+4. Open `Pulsar.xcodeproj` in Xcode 26
+5. Build and run on simulator or device
 
 ### Running Tests
 ```bash

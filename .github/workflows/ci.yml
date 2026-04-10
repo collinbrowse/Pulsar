@@ -2,9 +2,9 @@ name: CI - Build and Test
 
 on:
   push:
-    branches: [ main, 'milestone-*', 'cursor/*' ]
+    branches: [ main, develop, 'milestone-*', 'cursor/*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 # Note: This project is designed for iOS 26+ and requires Xcode 26 with iOS SDK.
 # Since iOS 26 SDK isn't installed on GitHub Actions runners yet, we run

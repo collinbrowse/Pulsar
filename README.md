@@ -100,7 +100,9 @@ CI runs lint, security checks, and code-structure verification on push/PR. Full 
 
 ## 🚀 CI/CD
 
-GitHub Actions runs on every push (see `.github/workflows/ci.yml`):
+**Git:** day-to-day work merges to **`develop`**; **`main`** is updated when promoting a release. Details: [Branching strategy](docs/README.md#branching-strategy).
+
+GitHub Actions runs on pushes and PRs to `main` and `develop` (see `.github/workflows/ci.yml`):
 
 - ✅ SwiftLint (macOS runner; warnings allowed)
 - ✅ Security checks (no committed `.env`, no hardcoded live keys in Swift)

@@ -1,5 +1,7 @@
 # Pull Request
 
+**Base branch:** open against **`develop`** unless this is an agreed release or hotfix PR into **`main`**.
+
 ## Milestone
 
 <!-- Which milestone does this PR belong to? (e.g., Milestone 0, Milestone 1, etc.) -->
