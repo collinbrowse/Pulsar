@@ -21,7 +21,6 @@ enum FeedFlow {
         }
         
         var activity = updated[index]
-        let wasKudos = activity.hasKudos
         activity.hasKudos.toggle()
         
         if activity.hasKudos {

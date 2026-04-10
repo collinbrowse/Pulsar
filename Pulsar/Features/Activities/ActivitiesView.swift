@@ -41,7 +41,7 @@ struct ActivitiesView: View {
             }
             .task {
                 // Sync activities when view appears if user is authenticated
-                if appState.isAuthenticated, let userId = appState.currentUserID {
+                if appState.isAuthenticated, appState.currentUserID != nil {
                     await syncActivities()
                 }
             }
