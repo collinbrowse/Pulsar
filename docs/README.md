@@ -168,10 +168,10 @@ Local persistence layer mirrors backend schema:
 ### Running Tests
 ```bash
 # Swift Testing (unit tests)
-xcodebuild test -scheme Pulsar -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme Pulsar -destination 'platform=iOS Simulator,name=iPhone 17'
 
 # UI Tests (XCTest)
-xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme PulsarUITests -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
 ### CI/CD

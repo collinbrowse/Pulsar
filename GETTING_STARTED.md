@@ -31,7 +31,7 @@ In Xcode:
 
 ### 3. Build and Run
 
-1. Select **iPhone 16 Pro** simulator
+1. Select **iPhone 17** simulator
 2. Press `Cmd+R`
 3. App should launch successfully! 🎉
 
@@ -128,7 +128,7 @@ To hide system and Core Data verbose logs and only see `[Pulsar]` and your code:
 ```bash
 # In Xcode: Cmd+U
 # Or command line:
-xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -scheme PulsarTests -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
 ### Swift 6 Compliance

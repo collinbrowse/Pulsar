@@ -90,7 +90,7 @@ Automated quality checks on every push/PR:
 
 **Configuration**:
 - Runs on `macos-15` with Xcode 26
-- Tests on iOS Simulator (iPhone 16 Pro)
+- Tests on iOS Simulator (iPhone 17)
 - SPM dependency caching for faster builds
 
 ### 5. **Comprehensive Documentation** ✅
